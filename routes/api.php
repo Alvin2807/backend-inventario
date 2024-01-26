@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CategoriasController;
+use App\Http\Controllers\Api\MarcasController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -14,6 +15,7 @@ use App\Http\Controllers\Api\CategoriasController;
 |
 */
 Route::apiResource('categoria', CategoriasController::class);
+Route::apiResource('marcas',MarcasController::class);
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
