@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\NomenclaturasController;
 use App\Http\Controllers\Api\ColoresController;
 use App\Http\Controllers\Api\UnidadMedidasController;
 use App\Http\Controllers\Api\ProductosController;
+use App\Http\Controllers\Api\AccionesController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -26,6 +27,7 @@ Route::apiResource('modelos', ModelosController::class);
 Route::apiResource('marcas',MarcasController::class);
 Route::apiResource('unidades_de_medidas', UnidadMedidasController::class);
 Route::apiResource('productos',ProductosController::class);
+Route::get('acciones_pendientes/{id_accion}', [AccionesController::class,'accionesPendientes']);
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
