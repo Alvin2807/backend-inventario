@@ -89,9 +89,6 @@ class AccionesController extends Controller
                     $accion->fk_tipo_accion = 1;
                     $accion->fk_despacho_solicitante = $request->input('fk_despacho_solicitante');
                     $accion->fk_despacho_asignado    = $request->input('fk_despacho_asignado');
-                   /*  $accion->cantidad_solicitada     = $this->sumarCantidadSolicitada($id_accion);
-                    $accion->cantidad_confirmada     = 0;
-                    $accion->cantidada_pendiente     = $accion->cantidad_solicitada -  $accion->cantidad_confirmada; */
                     $accion->estado = 'Pendiente';
                     $accion->observacion = ucfirst($request->input('observacion'));
                     $accion->usuario_crea = strtoupper($request->input('usuario'));
