@@ -34,10 +34,7 @@ class AccionesController extends Controller
 
     public function accionesPendientes($id_accion){
         //Mostrar acciones pendientes
-        $acciones = vista_acciones_pendientes::
-        select('id_accion','no_nota','fecha_nota','titulo_nota','fk_tipo_accion','incidencia','fecha_salida','cantidad_confirmada',
-        'cantidad_pendiente','cantidad_entregada','estado','observacion','tipo_accion','despacho_asignado','despacho_solicitante',
-        'usuario_crea','usuario_modifica')
+        $acciones = vista_acciones_pendientes::all()
         ->where('id_accion', $id_accion)
         ->first();
 

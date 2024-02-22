@@ -26,7 +26,5 @@ class vista_detalle_acciones extends Model
         'cantidad_entregada'=>'integer',
         'estado' => 'string',
         'observacion' =>'string',
-        'usuario_crea' =>'string',
-        'usuario_modifica' =>'string'
     ];
 }
