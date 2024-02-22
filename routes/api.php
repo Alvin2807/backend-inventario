@@ -27,6 +27,7 @@ Route::apiResource('modelos', ModelosController::class);
 Route::apiResource('marcas',MarcasController::class);
 Route::apiResource('unidades_de_medidas', UnidadMedidasController::class);
 Route::apiResource('productos',ProductosController::class);
+Route::apiResource('acciones', AccionesController::class);
 Route::get('acciones_pendientes/{id_accion}', [AccionesController::class,'accionesPendientes']);
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
