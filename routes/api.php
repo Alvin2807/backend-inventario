@@ -29,6 +29,7 @@ Route::apiResource('unidades_de_medidas', UnidadMedidasController::class);
 Route::apiResource('productos',ProductosController::class);
 Route::apiResource('acciones', AccionesController::class);
 Route::get('acciones_pendientes/{id_accion}', [AccionesController::class,'accionesPendientes']);
+Route::put('editar_solicitud', [AccionesController::class,'editarSolicitud']);
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });

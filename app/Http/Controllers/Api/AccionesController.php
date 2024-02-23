@@ -10,6 +10,7 @@ use App\Models\vista_detalle_acciones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Acciones\StoreRequest;
+use App\Http\Requests\Acciones\EditarSolicitudRequest;
 use App\Models\DetalleAccion;
 use App\Utils\Utilidades;
 use Carbon\Carbon;
@@ -161,9 +162,80 @@ class AccionesController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Accion $accion)
+    public function editarSolicitud(EditarSolicitudRequest $request)
     {
-        //
+        //Editar solicitud
+        try {
+            DB::beginTransaction();
+            $id_accion = $request->input('id_accion');
+            $validar = Accion::
+            where('id_accion', $id_accion)
+            ->where('estado', 'Pendiente')
+            ->count();
+            if ($validar) {
+                $data['no_nota'] = strtoupper($request->input('no_nota'));
+                $data['titulo_nota'] = strtoupper($request->input('titulo_nota'));
+                $data['fk_despacho_asignado'] = $request->input('fk_despacho_asignado');
+                $data['observacion'] = ucfirst($request->input('observacion'));
+                $data['usuario_modifica'] = strtoupper($request->input('usuario'));
+                $data['fecha_modifica'] = Carbon::now();
+                $accion = Accion::where('id_accion', $id_accion)->update($data);
+
+                $items = $request->input('detalle');
+                for ($i=0; $i <count($items) ; $i++) { 
+                   if (isset($items[$i]['id_detalle'])) {
+                    $detalles = new DetalleAccion();
+                    $detallesAccion['cantidad_solicitada'] = $items[$i]['cantidad_solicitada'];
+                    $detallesAccion['cantidad_pendiente']  = $items[$i]['cantidad_solicitada'];
+                    $detallesAccion['cantidad_confirmada']  = $detallesAccion['cantidad_solicitada'] - $detallesAccion['cantidad_pendiente'];
+                    $detallesAccion['observacion']          = ucfirst($items[$i]['observacion']);
+                    $detallesAccion['usuario_modifica'] =  $data['usuario_modifica'];
+                    $detallesAccion['fecha_modifica'] = $data['fecha_modifica'];
+                    $detalles = DetalleAccion::where('id_detalle', $items[$i]['id_detalle'])->update($detallesAccion);
+
+                    $actualizarAccion = new Accion();
+                    $dataAccion['cantidad_solicitada'] = $this->sumarCantidadSolicitada($id_accion);
+                    $dataAccion['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
+                    $dataAccion['cantidad_confirmada'] = 0;
+                    $actualizarAccion = Accion::where('id_accion', $id_accion)->update($dataAccion);
+
+                   } else {
+                    $detalleRegistrarAccion = new DetalleAccion();
+                    $detalleRegistrarAccion->fk_accion = $id_accion;
+                    $detalleRegistrarAccion->fk_producto = $items[$i]['fk_producto'];
+                    $detalleRegistrarAccion->cantidad_solicitada = $items[$i]['cantidad_solicitada'];
+                    $detalleRegistrarAccion->cantidad_pendiente  = $items[$i]['cantidad_solicitada'];
+                    $detalleRegistrarAccion->cantidad_confirmada = $detalleRegistrarAccion->cantidad_solicitada - $detalleRegistrarAccion->cantidad_pendiente;
+                    $detalleRegistrarAccion->cantidad_pendiente  = $detalleRegistrarAccion->cantidad_solicitada;
+                    $detalleRegistrarAccion->estado = 'Pendiente';
+                    $detalleRegistrarAccion->observacion = ucfirst($items[$i]['observacion']);
+                    $detalleRegistrarAccion->usuario_crea =  $data['usuario_modifica'];
+                    $detalleRegistrarAccion->save();
+
+                    $actualizarAccion = new Accion();
+                    $dataAccionRegistrar['cantidad_solicitada'] = $this->sumarCantidadSolicitada($id_accion);
+                    $dataAccionRegistrar['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
+                    $dataAccionRegistrar['cantidad_confirmada'] = 0;
+                    $actualizarAccion = Accion::where('id_accion', $id_accion)->update($dataAccionRegistrar);
+
+                   }
+                }
+
+                DB::commit();
+                return response()->json([
+                    "ok" =>true,
+                    "data" =>$accion,
+                    "exitoso" =>'Se guardo satisfactoriamente'
+                ]);
+            }
+        } catch (\Exception $th) {
+           DB::rollBack();
+           return response()->json([
+            "ok" =>false,
+            "data" =>$th->getMessage(),
+            "error" =>'Hubo un error consulte con el Administrador del sistema'
+           ]);
+        }
     }
 
     /**
