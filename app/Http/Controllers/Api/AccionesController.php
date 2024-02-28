@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Acciones\StoreRequest;
 use App\Http\Requests\Acciones\EditarSolicitudRequest;
 use App\Models\DetalleAccion;
+use App\Models\Producto;
 use App\Utils\Utilidades;
 use Carbon\Carbon;
 class AccionesController extends Controller
@@ -98,7 +99,7 @@ class AccionesController extends Controller
                         $detalleAccion->fk_accion = $accion->id;
                         $detalleAccion->fk_producto = $items[$i]['fk_producto'];
                         $detalleAccion->cantidad_solicitada = $items[$i]['cantidad_solicitada'];
-                        $detalleAccion->cantidad_confirmada = $detalleAccion->cantidad_solicitada - $detalleAccion->cantidad_pendiente;
+                        $detalleAccion->cantidad_confirmada = 0;
                         $detalleAccion->cantidad_pendiente  = $detalleAccion->cantidad_solicitada;
                         $detalleAccion->estado = 'Pendiente';
                         $detalleAccion->observacion = $items[$i]['observacion'];
@@ -110,6 +111,12 @@ class AccionesController extends Controller
                         $data['cantidad_pendiente']  = $this->sumarCantidadPendiente($detalleAccion->fk_accion);
                         $data['cantidad_confirmada'] = 0;
                         $actualizarAccion = Accion::where('id_accion', $detalleAccion->fk_accion)->update($data);
+
+                        $actualizarProducto = new Producto();
+                        $cantidad_solicitada_producto = $this->sumarProductoCantidadSolicitada($items[$i]['fk_producto']);
+                        $dataProducto['cantidad_solicitada'] =  $cantidad_solicitada_producto + $items[$i]['cantidad_solicitada'];
+                        $actualizarProducto = Producto::where('id_producto', $items[$i]['fk_producto'])->update($dataProducto);
+
                     }
 
                     DB::commit();
@@ -150,6 +157,16 @@ class AccionesController extends Controller
         ->sum('cantidad_pendiente');
         return $cantidadPendiente;
     }
+
+    public function sumarProductoCantidadSolicitada($id_producto) {
+        $cantidad_solicitada = Producto::
+        select('id_producto','cantidad_solicitada')
+        ->where('id_producto', $id_producto)
+        ->sum('cantidad_solicitada');
+        return $cantidad_solicitada;
+    }
+
+   
 
     /**
      * Display the specified resource.
@@ -199,6 +216,11 @@ class AccionesController extends Controller
                     $dataAccion['cantidad_confirmada'] = 0;
                     $actualizarAccion = Accion::where('id_accion', $id_accion)->update($dataAccion);
 
+                    $actualizarProducto = new Producto();
+                    $dataProducto['cantidad_solicitada'] =  $items[$i]['cantidad_solicitada_productos'] - $items[$i]['cantidad_solicitada_detalle'] + $items[$i]['cantidad_solicitada'];
+                    $actualizarProducto = Producto::where('id_producto', $items[$i]['fk_producto'])->update($dataProducto);
+
+
                    } else {
                     $detalleRegistrarAccion = new DetalleAccion();
                     $detalleRegistrarAccion->fk_accion = $id_accion;
@@ -217,6 +239,12 @@ class AccionesController extends Controller
                     $dataAccionRegistrar['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
                     $dataAccionRegistrar['cantidad_confirmada'] = 0;
                     $actualizarAccion = Accion::where('id_accion', $id_accion)->update($dataAccionRegistrar);
+
+                    $actualizarProducto = new Producto();
+                    $cantidad_solicitada_producto = $this->sumarProductoCantidadSolicitada($items[$i]['fk_producto']);
+                    $dataProducto['cantidad_solicitada'] =  $cantidad_solicitada_producto + $items[$i]['cantidad_solicitada'];
+                    $actualizarProducto = Producto::where('id_producto', $items[$i]['fk_producto'])->update($dataProducto);
+
 
                    }
                 }
@@ -241,9 +269,17 @@ class AccionesController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Accion $accion)
+    public function cancelarProductoSolicitud(Request $request, Accion $accion)
     {
-        //
+        //Cancelar un producto de una solicitud
+        try {
+           DB::beginTransaction();
+           $id_detalle = $request->input('id_detalle');
+           $fk_producto = $request->input('fk_producto');
+           $cantidad_solicitada = $request->input('cantidad_solicitada');
+        } catch (\Exception $th) {
+            
+        }
     }
 
     /**

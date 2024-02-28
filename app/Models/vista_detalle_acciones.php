@@ -10,7 +10,7 @@ class vista_detalle_acciones extends Model
     use HasFactory;
 
     public    $table = 'vista_detalle_acciones';
-    protected $fillable = ['id_detalle','fk_accion','fk_producto','cantidad_solitada','cantidad_confirmada',
+    protected $fillable = ['id_detalle','fk_accion','fk_producto','cantidad_solitada_detalle','cantidad_confirmada',
     'cantidad_pendiente','cantidad_entregada','estado','observacion','categoria','nombre_marca','nombre_modelo','nomenclatura',
     'unidad_medida','color','usuario_crea','usuario_modifica'];
    
@@ -20,7 +20,7 @@ class vista_detalle_acciones extends Model
         'id_detalle' =>'integer',
         'fk_accion'  =>'integer',
         'fk_producto' =>'integer',
-        'cantidad_solicitada'=>'integer',
+        'cantidad_solicitada_detalle'=>'integer',
         'cantidad_confirmada' =>'integer',
         'cantidad_pendiente' =>'integer',
         'cantidad_entregada'=>'integer',

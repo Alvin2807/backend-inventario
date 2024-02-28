@@ -59,6 +59,7 @@ class ProductosController extends Controller
             $producto->fk_nomenclatura = $request->input('fk_nomenclatura');
             $producto->fk_color = $request->input('fk_color');
             $producto->fk_unidad_medida = $request->input('fk_unidad_medida');
+            $producto->cantidad_solicitada = 0;
             $producto->codigo_producto = $codigo_producto;
             $producto->stock = 0;
             $producto->estado = 'Agotado';

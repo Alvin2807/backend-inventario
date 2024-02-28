@@ -23,7 +23,7 @@ class StoreRequest extends FormRequest
     {
         return [
             'no_nota'                 =>'required|string|min:11',
-            'titulo_nota'             =>'required|string|min:80',
+            'titulo_nota'             =>'required|string|max:80',
             'fk_tipo_accion'          =>'required|integer',
             'fk_despacho_solicitante' =>'required|integer',
             'fk_despacho_asignado'    =>'required|integer',
