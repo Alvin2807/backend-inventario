@@ -14,6 +14,7 @@ use App\Http\Requests\Acciones\EditarSolicitudRequest;
 use App\Models\DetalleAccion;
 use App\Models\Producto;
 use App\Utils\Utilidades;
+use App\Http\Requests\Acciones\CancelarProductoRequest;
 use Carbon\Carbon;
 class AccionesController extends Controller
 {
@@ -218,6 +219,8 @@ class AccionesController extends Controller
 
                     $actualizarProducto = new Producto();
                     $dataProducto['cantidad_solicitada'] =  $items[$i]['cantidad_solicitada_productos'] - $items[$i]['cantidad_solicitada_detalle'] + $items[$i]['cantidad_solicitada'];
+                    $dataProducto['usuario_modifica']    = $data['usuario_modifica'];
+                    $dataProducto['fecha_modifica']      = $data['fecha_modifica'];
                     $actualizarProducto = Producto::where('id_producto', $items[$i]['fk_producto'])->update($dataProducto);
 
 
@@ -238,11 +241,15 @@ class AccionesController extends Controller
                     $dataAccionRegistrar['cantidad_solicitada'] = $this->sumarCantidadSolicitada($id_accion);
                     $dataAccionRegistrar['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
                     $dataAccionRegistrar['cantidad_confirmada'] = 0;
+                    $dataAccionRegistrar['usuario_modifica'] = $data['usuario_modifica'];
+                    $detallesRegistrar['fecha_modifica']     = $data['fecha_modifica'];
                     $actualizarAccion = Accion::where('id_accion', $id_accion)->update($dataAccionRegistrar);
 
                     $actualizarProducto = new Producto();
                     $cantidad_solicitada_producto = $this->sumarProductoCantidadSolicitada($items[$i]['fk_producto']);
                     $dataProducto['cantidad_solicitada'] =  $cantidad_solicitada_producto + $items[$i]['cantidad_solicitada'];
+                    $dataProducto['usuario_modifica']    = $data['usuario_modifica'];
+                    $dataProducto['fecha_modifica']      = $data['fecha_modifica'];
                     $actualizarProducto = Producto::where('id_producto', $items[$i]['fk_producto'])->update($dataProducto);
 
 
@@ -269,16 +276,57 @@ class AccionesController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function cancelarProductoSolicitud(Request $request, Accion $accion)
+    public function cancelarProductoSolicitud(CancelarProductoRequest $request, Accion $accion)
     {
         //Cancelar un producto de una solicitud
         try {
            DB::beginTransaction();
            $id_detalle = $request->input('id_detalle');
            $fk_producto = $request->input('fk_producto');
-           $cantidad_solicitada = $request->input('cantidad_solicitada');
+           $cantidad_solicitada_productos = $request->input('cantidad_solicitada_productos');
+           $cantidad_solicitada_detalle = $request->input('cantidad_solicitada');
+           $usuario = strtoupper($request->input('usuario'));
+
+           $detalleAccion = DetalleAccion::
+           select('id_detalle','fk_producto','cantidad_confirmada')
+           ->where('id_detalle', $id_detalle)
+           ->where('fk_producto', $fk_producto)
+           ->where('cantidad_confirmada', '>', 0)
+           ->count();
+
+           if ($detalleAccion) {
+            return response()->json([
+                "ok" =>true,
+                "data"=>$detalleAccion,
+                "mensajeNoCancelado" =>'No se puede cancelar este producto, porque tiene cantidad confirmada.'
+            ]);
+           } else {
+            $actualizar = new DetalleAccion();
+            $data['estado'] = 'Cancelado';
+            $data['usuario_modifica'] = $usuario;
+            $data['fecha_modifica'] = Carbon::now();
+            $actualzar = DetalleAccion::where('id_detalle',$id_detalle)->update($data);
+
+            $actualizarProducto = new Producto();
+            $dataProducto['cantidad_solicitada'] =  $cantidad_solicitada_productos - $cantidad_solicitada_detalle;
+            $dataProducto['usuario_modifica']    =  $usuario;
+            $dataProducto['fecha_modifica']      =  $data['fecha_modifica'];
+            $actualizarProducto = Producto::where('id_producto', $fk_producto)->update($dataProducto);
+
+            DB::commit();
+            return response()->json([
+                "ok" =>true,
+                "data"=>$actualizar,
+                'exitosoCancelado' =>'Se canceló satisfactoriamente'
+            ]);
+           }
         } catch (\Exception $th) {
-            
+            DB::rollBack();
+            return response()->json([
+                "ok" =>false,
+                "data"=>$th->getMessage(),
+                "error"=>'Hubo un error consulte con el Administrador del sistema'
+            ]);
         }
     }
 
