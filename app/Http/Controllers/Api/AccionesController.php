@@ -15,6 +15,7 @@ use App\Models\DetalleAccion;
 use App\Models\Producto;
 use App\Utils\Utilidades;
 use App\Http\Requests\Acciones\CancelarProductoRequest;
+use App\Http\Requests\Acciones\CancelarSolicitudRequest;
 use Carbon\Carbon;
 class AccionesController extends Controller
 {
@@ -116,6 +117,7 @@ class AccionesController extends Controller
                         $actualizarProducto = new Producto();
                         $cantidad_solicitada_producto = $this->sumarProductoCantidadSolicitada($items[$i]['fk_producto']);
                         $dataProducto['cantidad_solicitada'] =  $cantidad_solicitada_producto + $items[$i]['cantidad_solicitada'];
+                        $dataProducto['fk_ultima_accion']    =  $detalleAccion->fk_accion;
                         $actualizarProducto = Producto::where('id_producto', $items[$i]['fk_producto'])->update($dataProducto);
 
                     }
@@ -172,9 +174,60 @@ class AccionesController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Accion $accion)
+    public function CancelarSolicitud(CancelarSolicitudRequest $request)
     {
-        //
+        //Cancelar solicitud
+        try {
+            DB::beginTransaction();
+            $tipo_acciones = $request->input('tipo_accion');
+            if ($tipo_acciones === 'ENTRADA' || $tipo_acciones === 'SALIDA') {
+                $id_accion = $request->input('id_accion');
+                $accion = new Accion();
+                $dataAccion['estado']  = 'Cancelado';
+                $dataAccion['usuario_modifica'] = strtoupper($request->input('usuario'));
+                $dataAccion['fecha_modifica'] = Carbon::now();
+                $accion = Accion::where('id_accion', $id_accion)->update($dataAccion);
+
+                $items = $request->input('detalle');
+                for ($i=0; $i <count($items) ; $i++) { 
+                    if (isset($items[$i]['id_detalle'])) {
+                       $detalleAcciones = new DetalleAccion;
+                       $detalles['estado'] =  $dataAccion['estado'];
+                       $detalles['usuario_modifica'] =  $dataAccion['usuario_modifica'];
+                       $detalles['fecha_modifica']   =  $dataAccion['fecha_modifica'];
+                       $detalleAcciones = DetalleAccion::where('fk_accion', $id_accion)->update($detalles);
+
+                       $productos = new Producto;
+                       $cantidad_solicitada_producto = $this->sumarProductoCantidadSolicitada($items[$i]['fk_producto']);
+                       $dataProductos['usuario_modifica']  =   $dataAccion['usuario_modifica'];
+                       $dataProductos['fecha_modifica']    =   $dataAccion['fecha_modifica'];
+                       $dataProductos['cantidad_solicitada'] = $cantidad_solicitada_producto - $items[$i]['cantidad_solicitada'];
+                       $productos = Producto::where('fk_ultima_accion', $id_accion)->update($dataProductos);
+
+                       DB::commit();
+                       return response()->json([
+                        "ok" =>true,
+                        "data"=>$accion,
+                        "cancelarExitoso"=>'Se canceló satisfactoriamente'
+                       ]);
+                    }
+                }
+            } else {
+                return response()->json([
+                    "ok"=>true,
+                    "mensajeVerificar" =>'No se reconoce este tipo de accion'
+                ]);
+            }
+           
+            
+        } catch (\Exception $th) {
+            DB::rollBack();
+            return response()->json([
+                "ok" =>false,
+                "data"=>$th->getMessage(),
+                "errorCancelar" =>'Hubo un error consulte con el Administrador del sistema'
+            ]);
+        }
     }
 
     /**
