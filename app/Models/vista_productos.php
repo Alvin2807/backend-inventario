@@ -10,7 +10,7 @@ class vista_productos extends Model
     use HasFactory;
     public    $table        = 'vista_productos';
     protected $fillable     = ['id_producto','fk_marca','fk_modelo','fk_nomenclatura','fk_color','fk_unidad_medida',
-    'codigo_producto','estado','stock','nombre_marca','nombre_modelo','categoria','color','unidad_medida','nomenclatura'];
+    'codigo_producto','estado','stock','nombre_marca','nombre_modelo','categoria','color','unidad_medida','nomenclatura','fecha_ultima_entrada','fecha_ultima_salida'];
 
     protected $casts       = 
     [
@@ -27,6 +27,8 @@ class vista_productos extends Model
         'nombre_marca' =>'string',
         'nombre_modelo' =>'string',
         'color' => 'string',
-        'unidad_medida' =>'string'
+        'unidad_medida' =>'string',
+        'fecha_ultima_entrada' =>'datetime:Y-m-d',
+        'fecha_ultima_salida' =>'datetime:Y-m-d'
     ];
 }
