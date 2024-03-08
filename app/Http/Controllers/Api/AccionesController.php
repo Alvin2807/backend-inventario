@@ -19,7 +19,7 @@ use App\Http\Requests\Acciones\CancelarSolicitudRequest;
 use App\Http\Requests\Acciones\ConfirmacionParcialRequest;
 use App\Models\Ubicacion;
 use Carbon\Carbon;
-use PhpParser\Node\Expr\Isset_;
+use App\Http\Requests\Acciones\ConfirmarGlobalEntrada;
 
 class AccionesController extends Controller
 {
@@ -510,104 +510,137 @@ class AccionesController extends Controller
            ]);
         }
        
-     /*    try {
-            DB::beginTransaction();
-            $id_accion   = $request->input('id_accion');
-            $cantidad_pendiente_acciones = $request->input('cantidad_solicitada');
-            $cantidad_confirmada_acciones = $request->input('cantidad_confirmada');
-            if (isset($id_accion)) {
-                $accion = new Accion;
-                $data['no_nota'] = strtoupper($request->input('no_nota'));
-                $data['titulo_nota'] = strtoupper($request->input('titulo_nota'));
-                $data['fk_despacho_asignado'] = $request->input('fk_despacho_asignado');
-                $data['observacion'] = ucfirst($request->input('observacion'));
-                $data['usuario_modifica'] = strtoupper($request->input('usuario'));
-                $data['fecha_modifica'] = Carbon::now();
-                $data['fecha_confirmacion'] = Carbon::now();
-                $accion = Accion::where('id_accion', $id_accion)->update($data);
-
-                $items = $request->input('detalle');
-                for ($i=0; $i <count($items) ; $i++) { 
-                    if (isset($items[$i]['id_detalle'])) {
-                       $detalleAccion = new DetalleAccion;
-                       $fk_producto = $items[$i]['fk_producto'];
-                       $id_detalle  = $items[$i]['id_detalle'];
-                       $detalle['cantidad_confirmada'] = $items[$i]['cantidad_confirmada'] + $items[$i]['cantidad_solicitada'];
-                       $detalle['cantidad_pendiente']  = $items[$i]['cantidad_pendiente']  - $items[$i]['cantidad_solicitada'];
-                       $detalle['observacion'] = ucfirst($items[$i]['observacion']);
-                       $detalle['usuario_modifica'] =  $data['usuario_modifica'];
-                       $detalle['fecha_modifica'] =  $data['fecha_modifica'];
-                       $detalleAccion = DetalleAccion::where('id_detalle', $items[$i]['id_detalle'])->update($detalle);
-
-                       if ($items[$i]['cantidad_solicitada'] === $detalle['cantidad_confirmada']) {
-                        $actualizarDetalleEstado = new DetalleAccion;
-                        $estadoDetalle['estado'] = 'Completado';
-                        $actualizarDetalleEstado = DetalleAccion::where('id_detalle', $id_detalle)->update($estadoDetalle);
-                       }
-
-                       $actualizarAccion = new Accion;
-                       $dataAccion['cantidad_pendiente']  = $cantidad_pendiente_acciones  -  $items[$i]['cantidad_solicitada'];
-                       $dataAccion['cantidad_confirmada'] = $cantidad_confirmada_acciones +  $items[$i]['cantidad_solicitada'];
-                       $actualizarAccion = Accion::where('id_accion', $id_accion)->update($dataAccion);
-
-                       $productosActualizar = new Producto;
-                       $producto['cantidad_solicitada'] = $items[$i]['cantidad_solicitada_productos'] - $items[$i]['cantidad_solicitada'];
-                       $producto['usuario_modifica'] = $data['usuario_modifica'];
-                       $producto['fecha_modifica']   =  $detalle['fecha_modifica'];
-                       $producto['fecha_ultima_entrada'] = Carbon::now();
-                       $producto['stock'] = $detalle['cantidad_confirmada'];
-                       $producto['estado'] = 'Disponible';
-                       $productosActualizar = Producto::where('id_producto', $fk_producto)->update($producto);
-
-                       $mostrarUbicacion = Ubicacion::
-                       select('id_ubicacion','stock')
-                       ->where('fk_producto', $items[$i]['fk_producto'])
-                       ->where('fk_localizacion', $items[$i]['fk_localizacion'])
-                       ->get();
-                       if (count($mostrarUbicacion) > 0) {
-                        $actualizarUbicacion = new Ubicacion;
-                        $ubicacionData['fk_localizacion'] = $items[$i]['fk_localizacion'];
-                        $ubicacionData['fk_producto'] = $items[$i]['fk_producto'];
-                        $ubicacionData['stock'] = $mostrarUbicacion[0]['stock'] + ($detalle['cantidad_confirmada']);
-                        $ubicacionData['usuario_modifica'] = $data['usuario_modifica'];
-                        $ubicacionData['fecha_modifica'] = $data['fecha_modifica'];
-                       } else {
-                        $ubicacionProducto = new Ubicacion();
-                        $ubicacionProducto->fk_localizacion = $items[$i]['fk_localizacion'];
-                        $ubicacionProducto->fk_producto = $items[$i]['fk_producto'];
-                        $ubicacionProducto->stock = $detalle['cantidad_confirmada'];
-                        $ubicacionProducto->usuario_crea = $data['usuario_modifica'];
-                        $ubicacionProducto->save();
-                       }
-                      
-
-                    } else {
-                        return 'No existe el identificador del detalle';
-                    }
-                }
-
-                DB::commit();
-                return response()->json([
-                    "ok" =>true,
-                    "data"=>$accion,
-                    "exitosoConfirmar" =>'Se confirmó satisfactorimante el producto'
-                ]);
+    }
 
 
-            } else {
-                return response()->json([
-                    "mensajeNoexiste" =>'No existe el identificador de esta acción'
-                ]);
+    public function confirmacionGlobalEntrada(ConfirmarGlobalEntrada $request) {
+        try {
+          DB::beginTransaction();  
+          $id_accion = $request->input('id_accion');
+          $usuario = strtoupper($request->input('usuario'));
+          $consultaAccion = Accion::
+          select('id_accion','estado','cantidad_confirmada')
+          ->where('estado','Pendiente')
+          ->where('id_accion',$id_accion)
+          ->get();
+          if (count($consultaAccion) > 0) {
+           $actualizarAccion = new Accion;
+           $dataAccion['usuario_modifica'] = $usuario;
+           $dataAccion['fecha_modifica'] = Carbon::now();
+           $actualizarAccion = Accion::where('id_accion',$id_accion)->update($dataAccion);
+           $items = $request->input('detalle');
+           for ($i=0; $i <count($items) ; $i++) { 
+            $consultaDetalle = DetalleAccion::
+            select('id_detalle','estado','cantidad_solicitada','cantidad_confirmada','cantidad_pendiente')
+            ->where('estado','Pendiente')
+            ->where('id_detalle', $items[$i]['id_detalle'])
+            ->get();
+            if (count($consultaDetalle) > 0) {
+                $detallesAccion = new DetalleAccion;
+                $dataDetalle['cantidad_confirmada'] = $consultaDetalle[0]['cantidad_confirmada'] + $items[$i]['cantidad_solicitada'];
+                $dataDetalle['cantidad_pendiente']  = $consultaDetalle[0]['cantidad_pendiente']  - $items[$i]['cantidad_solicitada'];
+                $dataDetalle['usuario_modifica']    = $dataAccion['usuario_modifica'];
+                $dataDetalle['fecha_modifica']      = $dataAccion['fecha_modifica'];
+                $detalleAccion = DetalleAccion::where('id_detalle', $items[$i]['id_detalle'])->update($dataDetalle);
+
             }
-           DB::beginTransaction();
+
+            $consultaEstadoDetalle = DetalleAccion::
+            select('id_detalle','estado','cantidad_solicitada','cantidad_confirmada','cantidad_pendiente')
+            ->where('estado','Pendiente')
+            ->where('id_detalle', $items[$i]['id_detalle'])
+            ->get();
+            if (count($consultaEstadoDetalle) > 0) {
+                $actualizarEstadoDetalle = new DetalleAccion;
+                if ($consultaEstadoDetalle[0]['cantidad_solicitada'] == $consultaEstadoDetalle[0]['cantidad_confirmada']) {
+                   $estadoDetalle['estado'] = 'Completado';
+                   $actualizarEstadoDetalle = DetalleAccion::where('id_detalle', $items[$i]['id_detalle'])->update($estadoDetalle);
+                }
+            }
+
+            $numeros = array($items[$i]['cantidad_solicitada']);
+            $suma = 0;
+            foreach ($numeros as $numero) {
+                $suma += $numero;
+            }
+
+            $actualizarAccionCantidad = new Accion;
+            $dataCantidadAccion['cantidad_confirmada'] = $consultaAccion[0]['cantidad_confirmada'] + $suma;
+            $dataCantidadAccion['cantidad_pendiente']  = $consultaAccion[0]['cantidad_pendiente']  - $consultaAccion[0]['cantidad_solicitada'];
+            $actualizarAccionCantidad = Accion::where('id_accion', $id_accion)->update($dataCantidadAccion);
+
+            $consultaEstadoAccion = Accion::
+            select('id_accion','cantidad_confirmada','cantidad_pendiente','cantidad_solicitada')
+            ->where('id_accion',$id_accion)
+            ->where('estado','Pendiente')
+            ->get();
+            if (count($consultaEstadoAccion) > 0) {
+                if ($consultaEstadoAccion[0]['cantidad_solicitada'] == $consultaEstadoAccion[0]['cantidad_confirmada']) {
+                    $actualizarEstadoAccion = new Accion;
+                    $estadoAccion['estado'] = 'Completado';
+                    $estadoAccion['fecha_confirmacion'] = Carbon::now();
+                    $actualizarAccionCantidad = Accion::where('id_accion',$id_accion)->update($estadoAccion);
+                }
+            }
+
+            $consultaProducto = Producto::
+            select('id_producto','stock','cantidad_solicitada')
+            ->where('id_producto', $items[$i]['fk_producto'])
+            ->get();
+            if (count($consultaProducto) > 0) {
+               $actualizarProducto = new Producto;
+               $producto['cantidad_solicitada'] = $consultaProducto[0]['cantidad_solicitada'] - $items[$i]['cantidad_solicitada'];
+               $producto['stock'] = $consultaProducto[0]['stock'] + $items[$i]['cantidad_solicitada'];
+               $producto['estado'] = 'Disponible';
+               $producto['usuario_modifica'] =  $dataAccion['usuario_modifica'];
+               $producto['fecha_modifica']   =  $dataAccion['fecha_modifica'];
+               $actualizarProducto = Producto::where('id_producto', $items[$i]['fk_producto'])->update($producto);
+            }
+
+            $consultaUbicaciones = Ubicacion::
+            select('id_ubicacion','stock','fk_localizacion','fk_producto')
+            ->where('fk_producto', $items[$i]['fk_producto'])
+            ->where('fk_localizacion', $items[$i]['fk_localizacion'])
+            ->get();
+            if (count($consultaUbicaciones) > 0) {
+                $actualizarUbicacion = new Ubicacion;
+                $ubicacion['stock']  = $consultaUbicaciones[0]['stock'] + $items[$i]['cantidad_solicitada'];
+                $ubicacion['usuario_modifica'] = $dataAccion['usuario_modifica'];
+                $ubicacion['fecha_modifica'] = $dataAccion['fecha_modifica'];
+                $actualizarUbicacion = Ubicacion::where('fk_producto', $items[$i]['fk_producto'])->update($ubicacion);
+            } else {
+                $registraUbicacion = new Ubicacion();
+                $registraUbicacion->fk_producto = $items[$i]['fk_producto'];
+                $registraUbicacion->fk_localizacion = $items[$i]['fk_localizacion'];
+                $registraUbicacion->stock = $items[$i]['cantidad_solicitada'];
+                $registraUbicacion->usuario_crea = $dataAccion['usuario_modifica'];
+                $registraUbicacion->save();
+            }
+
+
+
+           
+
+           }
+
+           DB::commit();
+           return response()->json([
+            "ok" =>true,
+            "data"=>$actualizarAccion,
+            "exitosoConfirmacionGlobal" =>'Se confirmó satisfactoriamente'
+           ]);
+          } else {
+            return 'No se puede confirmar la acción porque no se reconoce el identificador';
+          }
         } catch (\Exception $th) {
             DB::rollBack();
             return response()->json([
                 "ok" =>false,
                 "data"=>$th->getMessage(),
-                "error" =>'Hubo un error consulte con el Administrador del sistema'
-
+                "errorConfirmarGlobal" =>'Hubo un error consulte con el Administrador del sistema'
             ]);
-        } */
+        }
     }
+
+
 }
