@@ -11,7 +11,7 @@ class Producto extends Model
 
     public    $table        = 'ins_productos';
     protected $primarykey   = 'id_producto';
-    protected $fillable     = ['id_producto','fk_marca','fk_modelo','fk_nomenclatura','fk_color','fk_unidad_medida','codigo_producto','estado','stock','cantidad_solicitada','fk_ultima_accion',
+    protected $fillable     = ['id_producto','fk_marca','fk_modelo','fk_nomenclatura','fk_color','fk_unidad_medida','codigo_producto','estado','stock','cantidad_solicitada',
     'fecha_ultima_entrada','fecha_ultima_salida'];
     public    $incrementing = true;
     public    $timestamps   = false;
@@ -28,7 +28,6 @@ class Producto extends Model
         'estado' => 'string',
         'stock' => 'integer',
         'cantidad_solicitada'=>'integer',
-        'fk_ultima_accion' =>'integer',
         'fecha_ultima_entrada' =>'datetime:Y-m-d',
         'fecha_ultima_salida' =>'datetime:Y-m-d'
     ];

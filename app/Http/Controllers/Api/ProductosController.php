@@ -114,4 +114,17 @@ class ProductosController extends Controller
     {
         //
     }
+
+    public function buscarProductoUbicacion(){
+        $buscar = Producto::
+        select('id_producto','stock')
+        ->sum('stock');
+        if ($buscar > 0) {
+            
+        } else {
+            return response()->json([
+                "noExisteStock" =>'No se puede ejecutar una salida, porque no hay productos en stock'
+            ]);
+        }
+    }
 }

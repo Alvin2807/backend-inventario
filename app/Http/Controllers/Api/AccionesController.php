@@ -20,7 +20,7 @@ use App\Http\Requests\Acciones\ConfirmacionParcialRequest;
 use App\Models\Ubicacion;
 use Carbon\Carbon;
 use App\Http\Requests\Acciones\ConfirmarGlobalEntrada;
-
+use App\Http\Requests\Acciones\SalidaRequestRegistro;
 class AccionesController extends Controller
 {
     /**
@@ -35,9 +35,86 @@ class AccionesController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function registrarAccionesSalida(SalidaRequestRegistro $request)
     {
-        //
+        //Registrar acciones de salida
+        try {
+            DB::beginTransaction();
+            $tipo_acciones = TipoAccion::
+            select('id_tipo_accion','tipo_accion')
+            ->where('tipo_accion', 'SALIDA')
+            ->get();
+            if (count($tipo_acciones)) {
+                $no_nota = strtoupper($request->input('no_nota'));
+                $consulta = Accion::
+                select('id_accion','no_nota')
+                ->where('no_nota', $no_nota)
+                ->get();
+                if (count($consulta) > 0) {
+                    return response()->json([
+                        "existe" => 'Ya existe el número de nota '.$no_nota
+                    ]);
+                } else {
+                    $accion = new Accion();
+                    $accion->no_nota = $no_nota;
+                    $accion->fecha_nota = Carbon::now();
+                    $accion->titulo_nota = strtoupper($request->input('titulo_nota'));
+                    $accion->fk_tipo_accion = 2;
+                    $accion->fk_despacho_solicitante = $request->input('fk_despacho_solicitante');//Despacho de informática
+                    $accion->fk_despacho_asignado    = $request->input('fk_despacho_asignado');// Despacho al que se le asigno el insumo
+                    $accion->estado = 'Pendiente';
+                    $accion->incidencia = $request->input('incidencia');
+                    $accion->fecha_salida = Carbon::now();
+                    $accion->observacion = ucfirst($request->input('observacion'));
+                    $accion->usuario_crea = strtoupper($request->input('usuario'));
+                    $accion->save();
+
+                    $items = $request->input('detalle');
+                    for ($i=0; $i <count($items) ; $i++) { 
+                        $detalleAccion = new DetalleAccion();
+                        $detalleAccion->fk_accion = $accion->id;
+                        $detalleAccion->fk_producto = $items[$i]['fk_producto'];
+                        $detalleAccion->cantidad_solicitada = $items[$i]['cantidad_solicitada'];
+                        $detalleAccion->cantidad_entregada = 0;
+                        $detalleAccion->cantidad_confirmada = 0;
+                        $detalleAccion->cantidad_pendiente  = $detalleAccion->cantidad_solicitada;
+                        $detalleAccion->estado = 'Pendiente';
+                        $detalleAccion->observacion  = $items[$i]['observacion'];
+                        $detalleAccion->usuario_crea =  $accion->usuario_crea;
+                        $detalleAccion->save();
+
+                        $actualizarAccion = new Accion();
+                        $data['cantidad_solicitada'] = $this->sumarCantidadSolicitada($detalleAccion->fk_accion);
+                        $data['cantidad_pendiente']  = $this->sumarCantidadPendiente($detalleAccion->fk_accion);
+                        $data['cantidad_confirmada'] = 0;
+                        $data['cantidad_entregada'] = 0;
+                        $actualizarAccion = Accion::where('id_accion', $detalleAccion->fk_accion)->update($data);
+
+                        $actualizarProducto = new Producto();
+                        $cantidad_solicitada_producto = $this->sumarProductoCantidadSolicitada($items[$i]['fk_producto']);
+                        $dataProducto['cantidad_solicitada'] =  $cantidad_solicitada_producto + $items[$i]['cantidad_solicitada'];
+                        $actualizarProducto = Producto::where('id_producto', $items[$i]['fk_producto'])->update($dataProducto);
+
+                    }
+
+
+                    DB::commit();
+                    return response()->json([
+                        "ok"=>true,
+                        "data"=>'Se guardo satisfactoriamente'
+                    ]);
+                }
+            } else {
+                return 'No se puede generar este proceso de accion';
+            }
+        } catch (\Exception $th) {
+            DB::rollBack();
+            return response()->json([
+                "ok"=>false,
+                "data"=>$th->getMessage(),
+                "errorRegistro"=>'Hubo un error consulte con el Administrador del sistema'
+            ]);
+        }
     }
 
     public function accionesPendientes($id_accion){
@@ -121,7 +198,6 @@ class AccionesController extends Controller
                         $actualizarProducto = new Producto();
                         $cantidad_solicitada_producto = $this->sumarProductoCantidadSolicitada($items[$i]['fk_producto']);
                         $dataProducto['cantidad_solicitada'] =  $cantidad_solicitada_producto + $items[$i]['cantidad_solicitada'];
-                        $dataProducto['fk_ultima_accion']    =  $detalleAccion->fk_accion;
                         $actualizarProducto = Producto::where('id_producto', $items[$i]['fk_producto'])->update($dataProducto);
 
                     }
@@ -143,7 +219,7 @@ class AccionesController extends Controller
             return response()->json([
                 "ok" =>false,
                 "data" =>$th->getMessage(),
-                "error" =>'Hubo un error consulte con el Administrador del sistema.'
+                "errorRegistro" =>'Hubo un error consulte con el Administrador del sistema.'
             ]);
         }
     }
@@ -641,6 +717,5 @@ class AccionesController extends Controller
             ]);
         }
     }
-
 
 }
