@@ -361,7 +361,7 @@ class AccionesController extends Controller
                     $actualizarAccion = Accion::where('id_accion', $id_accion)->update($dataAccion);
 
                     $actualizarProducto = new Producto();
-                    $dataProducto['cantidad_solicitada'] =  $items[$i]['cantidad_solicitada_productos'] - $items[$i]['cantidad_solicitada_detalle'] + $items[$i]['cantidad_solicitada'];
+                    $dataProducto['cantidad_solicitada'] = $items[$i]['cantidad_solicitada_productos'] - $items[$i]['cantidad_solicitada_detalle'] + $items[$i]['cantidad_solicitada'];
                     $dataProducto['usuario_modifica']    = $data['usuario_modifica'];
                     $dataProducto['fecha_modifica']      = $data['fecha_modifica'];
                     $actualizarProducto = Producto::where('id_producto', $items[$i]['fk_producto'])->update($dataProducto);
@@ -717,5 +717,6 @@ class AccionesController extends Controller
             ]);
         }
     }
+
 
 }

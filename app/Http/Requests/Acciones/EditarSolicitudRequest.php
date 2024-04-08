@@ -26,7 +26,7 @@ class EditarSolicitudRequest extends FormRequest
             'no_nota' =>'required|string',
             'titulo_nota' =>'required|string',
             'fk_despacho_asignado' =>'required|integer',
-            'observacion' =>'required|string|min:80',
+            'observacion' =>'nullable|string|min:80',
             'usuario' =>'required|string',
             'sometimes' =>'sometimes|array|min:1',
             'detalle.*.cantidad_solicitada' =>'required|integer',
