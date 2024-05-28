@@ -37,7 +37,7 @@ Route::put('confirmacion_parcial', [AccionesController::class, 'confirmacionParc
 Route::put('confirmacion_global_entrada', [AccionesController::class,'confirmacionGlobalEntrada']);
 Route::post('registrar_salida', [AccionesController::class,'registrarAccionesSalida']);
 Route::get('buscar_producto_stock', [ProductosController::class,'buscarProductoUbicacion']);
-//Route::post('login', [LoginController::class,'inciarSesion']);
+Route::post('iniciar_seccion',[LoginController::class,'inciarSesion']);
 Route::apiResource('login', LoginController::class);
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
