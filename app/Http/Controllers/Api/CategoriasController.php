@@ -7,6 +7,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Categoria\StoreRequest;
+use App\Http\Requests\Categoria\EditarRequest;
+use Carbon\Carbon;
+
 class CategoriasController extends Controller
 {
     /**
@@ -17,6 +20,7 @@ class CategoriasController extends Controller
         //Mostrar las categorias
         $categoria = Categoria::
         select('id_categoria','categoria')
+        ->orderby('categoria','asc')
         ->get();
         return response()->json([
             "ok" =>true,
@@ -77,9 +81,48 @@ class CategoriasController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Categoria $categoria)
+    public function editarCategoria(EditarRequest $request)
     {
-        //
+        //Editar una categoría
+        DB::beginTransaction();
+        try {
+            $categoria    = strtoupper($request->input('categoria'));
+            $id_categoria = (int)$request->input('id_categoria');
+            $usuario      = strtoupper($request->input('usuario'));
+            $consulta     = Categoria::
+            select('id_categoria','categoria')
+            ->where('categoria', $categoria)
+            ->where('id_categoria','<>', $id_categoria)
+            ->get();
+            if (count($consulta) > 0) {
+                return response()->json([
+                    "ok" =>true,
+                    "existeCategoria" =>'Ya existe una categoría '.$categoria
+                ]);
+            } else {
+                $categorias = new Categoria();
+                $data['categoria'] = $categoria;
+                $data['usuario_modifica'] = $usuario;
+                $data['fecha_modifica']   = Carbon::now()->format('d-m-y H:i:s');
+                $categorias = Categoria::where('id_categoria', $id_categoria)->update($data);
+                DB::commit();
+                return response()->json([
+                    "ok" =>true,
+                    "data"=>$categorias,
+                    "modificado"=>'Se guardo satisfactoriamente'
+                ]);
+            }
+
+            
+        } catch (\Exception $th) {
+            DB::rollBack();
+            return response()->json([
+                "ok" =>false,
+                "data"=>$th->getMessage(),
+                "errorModifica" =>'Hubo un error consulte con el Administrador del sistema'
+            ]);
+        }
+        
     }
 
     /**

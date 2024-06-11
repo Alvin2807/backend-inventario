@@ -22,7 +22,7 @@ class StoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nombre_marca' =>'required|string',
+            'marca' =>'required|string',
             'usuario' =>'string'
         ];
     }

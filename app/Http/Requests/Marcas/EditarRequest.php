@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\Modelos;
+namespace App\Http\Requests\Marcas;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreRequest extends FormRequest
+class EditarRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,12 +22,9 @@ class StoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'fk_marca' =>'required|integer',
-            'usuario'  =>'required|string',
-            'modelos'  => 'sometimes|array|min:1',
-            'modelos.*.modelo' =>'required|string'
-
-           
+            'id_marca' =>'integer|required',
+            'marca'    =>'string|required',
+            'usuario'  =>'string|required'
         ];
     }
 }

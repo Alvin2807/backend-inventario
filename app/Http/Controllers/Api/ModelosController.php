@@ -18,13 +18,7 @@ class ModelosController extends Controller
     public function index()
     {
         //Mostrar modelos
-       $vista_modelo = VistaModeloMarca::
-       select('id_modelo','fk_marca','nombre_marca','nombre_modelo')
-       ->get();
-       return response()->json([
-        "ok" =>true,
-        "data"=>$vista_modelo
-       ]);
+      
     }
 
     /**
@@ -41,51 +35,45 @@ class ModelosController extends Controller
     public function store(StoreRequest $request)
     {
         //Registrar modelos
-        try {
-            DB::beginTransaction();
-            $fk_marca = $request->input('fk_marca');
-            $usuario  = strtoupper($request->input('usuario'));
-            $nombre_modelo = strtoupper($request->input('nombre_modelo'));
-            $consultar = Modelo::
-            select('id_modelo','nombre_modelo')
-            ->where('nombre_modelo', $nombre_modelo)
-            ->get();
-            if (count($consultar) > 0) {
-                return response()->json([
-                    "ok" =>true,
-                    "existe" =>'Ya existe el modelo '.$nombre_modelo
-                ]);
-            } else {
-                $modelos = new Modelo();
-                $modelos->fk_marca = $fk_marca;
-                $modelos->nombre_modelo = $nombre_modelo;
-                $modelos->usuario_crea = $usuario;
-                $modelos->save();
+      try {
+        DB::beginTransaction();
+        $fk_marca = $request->input('fk_marca');
+        $usuario  = strtoupper($request->input('usuario'));
+        $item     = $request->input('modelos');
 
-                $nomenclatura = new Nomenclatura();
-                $nomenclatura->fk_modelo = $modelos->id;
-                $nomenclatura->nomenclatura = strtoupper($request->input('nomenclatura'));
-                $nomenclatura->usuario_crea = $usuario;
-                $nomenclatura->save();
+        for ($i=0; $i <count($item) ; $i++) { 
+           $modelo  = strtoupper($item[$i]['modelo']);
+           $validar = Modelo::where('modelo', $modelo)->count();
+           if ($validar) {
+            return [
+                "ok" =>true,
+                "existeModelo" =>'Ya existe el modelo '.$modelo
+            ];
+           } else {
+            for ($i=0; $i <count($item) ; $i++) { 
+                $registrarModelo = new Modelo();
+                $registrarModelo->fk_marca = $fk_marca;
+                $registrarModelo->modelo = strtoupper($item[$i]['modelo']);
+                $registrarModelo->usuario_crea = $usuario;
+                $registrarModelo->save();
+            }
 
-                DB::commit();
-                return response()->json([
-                    "ok" =>true,
-                    "data" =>$modelos,
-                    "exitoso" =>'Se guardo satisfactoriamente'
-                ]);
-          }
-           
-
-          
-        } catch (\Exception $th) {
-            DB::rollBack();
+            DB::commit();
             return response()->json([
-                "ok" =>false,
-                "data" =>$th->getMessage(),
-                "error"=>'Hubo un error consulte con el Administrador del sistema'
+                "ok"=>true,
+                "data"=>$item,
+                "registrarModelo"=>'Se guardo satisfactoriamente'
             ]);
+           }
         }
+      } catch (\Exception $th) {
+        DB::rollBack();
+        return response()->json([
+            "ok"=>false,
+            "data"=>$th->getMessage(),
+            "errorModelo"=>'Hubo un error consulte con el Administrador del sistema'
+        ]);
+      }
     }
 
     /**

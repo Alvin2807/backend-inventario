@@ -7,7 +7,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Marcas\StoreRequest;
-
+use App\Models\VistaMarcaModelo;
+use App\Http\Requests\Marcas\EditarRequest;
+use Carbon\Carbon;
 class MarcasController extends Controller
 {
     /**
@@ -17,7 +19,7 @@ class MarcasController extends Controller
     {
         //Mostrar las marcas
         $marca = Marca::
-        select('id_marca','nombre_marca')
+        select('id_marca','marca')
         ->get();
         return response()->json([
             "ok" =>true,
@@ -42,20 +44,20 @@ class MarcasController extends Controller
 
         try {
             DB::beginTransaction();
-            $nombre_marca = strtoupper($request->input('nombre_marca'));
+            $marca = strtoupper($request->input('marca'));
             $consulta = Marca::
-            select('id_marca','nombre_marca')
-            ->where('nombre_marca', $nombre_marca)
+            select('id_marca','marca')
+            ->where('marca', $marca)
             ->get();
 
             if (count($consulta) > 0) {
                 return response()->json([
                  "ok" =>true,
-                 "existe"=>'Ya existe la marca '.$nombre_marca
+                 "existe"=>'Ya existe la marca '.$marca
                 ]);
              } else {
                  $marcas = new Marca();
-                 $marcas->nombre_marca = strtoupper($request->input('nombre_marca'));
+                 $marcas->marca = strtoupper($request->input('marca'));
                  $marcas->usuario_crea = strtoupper($request->input('usuario'));
                  $marcas->save();
                  DB::commit();
@@ -70,7 +72,7 @@ class MarcasController extends Controller
             return response()->json([
                 "ok" =>false,
                 "data"=>$th->getMessage(),
-                "error" =>'Hubo un error consulte con el Administrador del sistema'
+                "errorRegistro" =>'Hubo un error consulte con el Administrador del sistema'
             ]);
         }
         
@@ -79,9 +81,47 @@ class MarcasController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Marca $marca)
+    public function editarMarca(EditarRequest $request)
     {
-        //
+        //Editar una marca
+        DB::beginTransaction();
+        try {
+            $marca    = strtoupper($request->input('marca'));
+            $id_marca = (int)$request->input('id_marca');
+            $usuario      = strtoupper($request->input('usuario'));
+            $consulta     = Marca::
+            select('id_marca','marca')
+            ->where('marca', $marca)
+            ->where('id_marca','<>', $id_marca)
+            ->get();
+            if (count($consulta) > 0) {
+                return response()->json([
+                    "ok" =>true,
+                    "existeMarca" =>'Ya existe una marca '.$marca
+                ]);
+            } else {
+                $marcas = new Marca();
+                $data['marca'] = $marca;
+                $data['usuario_modifica'] = $usuario;
+                $data['fecha_modifica']   = Carbon::now()->format('d-m-y H:i:s');
+                $marcas = Marca::where('id_marca', $id_marca)->update($data);
+                DB::commit();
+                return response()->json([
+                    "ok" =>true,
+                    "data"=>$marcas,
+                    "modificado"=>'Se guardo satisfactoriamente'
+                ]);
+            }
+
+            
+        } catch (\Exception $th) {
+            DB::rollBack();
+            return response()->json([
+                "ok" =>false,
+                "data"=>$th->getMessage(),
+                "errorModifica" =>'Hubo un error consulte con el Administrador del sistema'
+            ]);
+        }
     }
 
     /**
