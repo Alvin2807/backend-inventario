@@ -8,13 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class VistaMarcaModelo extends Model
 {
     use HasFactory;
-    public    $table    = "vista_marcas_modelos";
-    protected $fillable = ['id_marca','id_modelo','marca','modelo'];
+    public    $table    = "vista_modelos_marca";
+    protected $fillable = ['id_modelo','fk_marca','marca','modelo'];
 
     protected $casts    = 
     [
         'id_modelo' =>'integer',
-        'id_marca'  =>'integer',
+        'fk_marca'  =>'integer',
         'marca'     =>'string',
         'modelo'    =>'string'
     ];

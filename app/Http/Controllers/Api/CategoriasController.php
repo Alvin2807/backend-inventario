@@ -103,7 +103,7 @@ class CategoriasController extends Controller
                 $categorias = new Categoria();
                 $data['categoria'] = $categoria;
                 $data['usuario_modifica'] = $usuario;
-                $data['fecha_modifica']   = Carbon::now()->format('d-m-y H:i:s');
+                $data['fecha_modifica']   = Carbon::now()->format('Y-m-d H:i:s');
                 $categorias = Categoria::where('id_categoria', $id_categoria)->update($data);
                 DB::commit();
                 return response()->json([

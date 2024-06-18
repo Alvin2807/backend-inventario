@@ -103,7 +103,7 @@ class MarcasController extends Controller
                 $marcas = new Marca();
                 $data['marca'] = $marca;
                 $data['usuario_modifica'] = $usuario;
-                $data['fecha_modifica']   = Carbon::now()->format('d-m-y H:i:s');
+                $data['fecha_modifica']   = Carbon::now()->format('Y-m-d H:i:s');
                 $marcas = Marca::where('id_marca', $id_marca)->update($data);
                 DB::commit();
                 return response()->json([

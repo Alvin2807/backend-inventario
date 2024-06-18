@@ -39,6 +39,7 @@ Route::put('cancelar_accion',[AccionesController::class, 'CancelarSolicitud']);
 Route::put('confirmacion_parcial', [AccionesController::class, 'confirmacionParcial']);
 Route::put('confirmacion_global_entrada', [AccionesController::class,'confirmacionGlobalEntrada']);
 Route::put('editar_categoria',[CategoriasController::class,'editarCategoria']);
+Route::put('editar_modelo',[ModelosController::class,'editarModelo']);
 Route::post('registrar_salida', [AccionesController::class,'registrarAccionesSalida']);
 Route::post('iniciar_seccion',[LoginController::class,'inciarSesion']);
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
