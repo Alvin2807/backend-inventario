@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\UnidadMedida;
+namespace App\Http\Requests\Nomenclaturas;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreRequest extends FormRequest
+class EditarRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,8 +22,9 @@ class StoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'unidad_medida' => 'required|string',
-            'usuario' => 'required|string'
+            'nomenclatura'    =>'required|string',
+            'id_nomenclatura' =>'required|integer',
+            'usuario'         =>'required|string'
         ];
     }
 }
