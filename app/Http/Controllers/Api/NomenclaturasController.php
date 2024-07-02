@@ -8,6 +8,7 @@ use App\Http\Requests\Nomenclaturas\StoreRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Nomenclaturas\EditarRequest;
+use App\Models\VistaNomenclaturas;
 use Carbon\Carbon;
 class NomenclaturasController extends Controller
 {
@@ -17,7 +18,7 @@ class NomenclaturasController extends Controller
     public function index()
     {
         //Mostrar nomenclaturas
-        $nomenclatura = Nomenclatura::all();
+        $nomenclatura = VistaNomenclaturas::all();
         return response()->json([
             "ok" =>true,
             "data" =>$nomenclatura
@@ -40,6 +41,7 @@ class NomenclaturasController extends Controller
        try {
         DB::beginTransaction();
         $nomenclatura = strtoupper($request->input('nomenclatura'));
+        $fk_despacho  = $request->input('fk_despacho');
         $usuario      = strtoupper($request->input('usuario'));
         $consulta     = Nomenclatura::
         select('id_nomenclatura','nomenclatura')
@@ -53,6 +55,7 @@ class NomenclaturasController extends Controller
         } else {
             $nomenclaturas = new Nomenclatura();
             $nomenclaturas->nomenclatura = $nomenclatura;
+            $nomenclaturas->fk_despacho  = $fk_despacho;
             $nomenclaturas->usuario_crea = $usuario;
             $nomenclaturas->save();
 
@@ -94,6 +97,7 @@ class NomenclaturasController extends Controller
             DB::beginTransaction();
             $nomenclatura    = strtoupper($request->input('nomenclatura'));
             $id_nomenclatura = $request->input('id_nomenclatura');
+            $fk_despacho     = $request->input('fk_despacho');
             $usuario         = strtoupper($request->input('usuario'));
             $consultar       = Nomenclatura::
             select('id_nomenclatura', 'nomenclatura')
@@ -108,6 +112,7 @@ class NomenclaturasController extends Controller
                 $nomenclaturas = new Nomenclatura();
                 $data['nomenclatura'] = $nomenclatura;
                 $data['usuario_modifica'] = $usuario;
+                $data['fk_despacho']      = $fk_despacho;
                 $data['fecha_modifica']   = Carbon::now()->format('Y-m-d H:i:s');
                 $nomenclaturas = Nomenclatura::where('id_nomenclatura', $id_nomenclatura)->update($data);
 

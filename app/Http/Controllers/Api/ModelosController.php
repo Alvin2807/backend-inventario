@@ -31,9 +31,19 @@ class ModelosController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function selecionarMarcaModelo($fk_marca)
     {
-        //
+        //Seleccionar una marca y mostrar los modelos
+        $modelo = Modelo::
+        select('id_modelo','fk_marca','modelo')
+        ->where('fk_marca', [$fk_marca])
+        ->orderBy('modelo','asc')
+        ->get();
+        return response()->json([
+            "ok" =>true,
+            "data"=>$modelo
+        ]);
+
     }
 
     /**
