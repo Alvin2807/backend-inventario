@@ -11,7 +11,19 @@ class Insumo extends Model
 
     public    $table        = 'ins_insumos';
     protected $primarykey   = 'id_insumo';
-    protected $fillable     = ['id_insumo','fk_nomenclatura','fk_marca','fk_modelo','fk_categoria','fk_color','codigo','estado','stock'];
+    protected $fillable     = ['id_insumo','fk_nomenclatura','fk_marca','fk_modelo','fk_categoria','fk_color','codigo','estado','stock','referencia'];
     public    $incrementing = true;
     public    $timestamps   = false;
+
+    protected $casts = 
+    [
+        'id_insumo'       =>'integer',
+        'fk_nomenclatura' =>'integer',
+        'fk_marca'        =>'integer',
+        'fk_categoria'    =>'integer',
+        'fk_color'        =>'integer',
+        'codigo'          =>'string',
+        'stock'           =>'integer',
+        'referencia'      =>'string'
+    ];
 }

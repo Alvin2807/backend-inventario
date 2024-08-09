@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Despacho;
 use App\Http\Controllers\Controller;
+use App\Models\VistaDespachoAlternos;
 use App\Models\VistaDespachoInterno;
 use Illuminate\Http\Request;
 
@@ -27,9 +28,15 @@ class DespachosController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function MostrarDespachosAlternos()
     {
-        //
+        //Muestra los despachos alternos
+        $despachos = VistaDespachoAlternos::all();
+        return response()->json([
+            "ok"=>true,
+            "data"=>$despachos
+        ]);
+
     }
 
     /**

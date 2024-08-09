@@ -22,17 +22,22 @@ class StoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'no_nota'                 =>'required|string|min:11',
-            'titulo_nota'             =>'required|string|max:80',
+            'no_nota'                 =>'nullable|string',
+            'fecha_nota'              =>'nullable|date',
+            'fecha_confirmacion'      =>'nullable|date',
+            'no_incidencia'           =>'nullable|string',
+            'titulo_nota'             =>'nullable|string|max:80',
             'fk_tipo_accion'          =>'required|integer',
-            'fk_despacho_solicitante' =>'required|integer',
-            'fk_despacho_asignado'    =>'required|integer',
-            'observacion'             =>'required|string|min:80',
+            'tipo_accion'             =>'required|string',
+            'fk_despacho'             =>'required|integer',
+            'observacion'             =>'nullable|string|min:80',
+            'registrado_por'          =>'nullable|string',
+            'cantidad_solicitada'     =>'nullable|integer',
             'usuario'                 =>'required|string',
             'detalle'                 =>'sometimes|array|min:1',
-            'detalle.*.fk_producto'   =>'required|integer',
+            'detalle.*.fk_insumo'     =>'required|integer',
             'detalle.*.cantidad_solicitada' =>'required|integer',
-            'detalle.*.observacion'   =>'nullable|string'
+            //'detalle.*.observacion'   =>'nullable|string'
         ];
     }
 }

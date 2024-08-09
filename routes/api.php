@@ -30,6 +30,8 @@ Route::apiResource('acciones', AccionesController::class);
 Route::apiResource('login', LoginController::class);
 Route::apiResource('despachos', DespachosController::class);
 Route::apiResource('insumos',InsumosController::class);
+Route::get('despachos_alternos',[DespachosController::class,'MostrarDespachosAlternos']);
+Route::get('total_notas', [AccionesController::class,'mostrarContadorNota']);
 Route::get('acciones_pendientes/{id_accion}', [AccionesController::class,'accionesPendientes']);
 Route::get('mostrar_modelos_por_marcas/{fk_marca}', [ModelosController::class,'selecionarMarcaModelo']);
 Route::put('editar_solicitud', [AccionesController::class,'editarSolicitud']);
@@ -43,6 +45,7 @@ Route::put('editar_nomenclatura',[NomenclaturasController::class,'editarNomencla
 Route::put('editar_modelo',[ModelosController::class,'editarModelo']);
 Route::put('editar_insumo', [InsumosController::class,'editarInsumo']);
 Route::post('registrar_salida', [AccionesController::class,'registrarAccionesSalida']);
+Route::post('mostrar_nota_exite', [AccionesController::class,'mostrarNotaExiste']);
 Route::post('iniciar_seccion',[LoginController::class,'inciarSesion']);
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

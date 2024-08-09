@@ -55,6 +55,7 @@ class InsumosController extends Controller
            } else {
             $insumos = new Insumo();
             $insumos->fk_nomenclatura = $request->input('fk_nomenclatura');
+            $insumos->referencia = strtoupper($request->input('referencia'));
             $insumos->fk_marca = $request->input('fk_marca');
             $insumos->fk_modelo = $request->input('fk_modelo');
             $insumos->fk_categoria = $request->input('fk_categoria');
@@ -126,6 +127,7 @@ class InsumosController extends Controller
                 $data['fk_modelo']       = $request->input('fk_modelo');
                 $data['fk_categoria']    = $request->input('fk_categoria');
                 $data['fk_color']        = $request->input('fk_color');
+                $data['referencia']      = strtoupper($request->input('referencia'));
                 $data['codigo']          = $codigo;
                 $data['usuario_modifica'] = strtoupper($request->input('usuario'));
                 $data['fecha_modifica']   = Carbon::now()->format('Y-m-d H:s:i');
