@@ -11,7 +11,7 @@ class VistaInsumos extends Model
 
     public    $table    = 'vista_insumos';
     protected $fillable = ['id_insumo','codigo','categoria','marca','modelo','color','nomenclatura',
-    'fk_nomenclatura','fk_marca','fk_modelo','fk_categoria','fk_color','estado','stock'];
+    'fk_nomenclatura','fk_marca','fk_modelo','fk_categoria','fk_color','estado','stock','cantidad_pedida'];
 
     protected $casts = 
     [
@@ -28,7 +28,8 @@ class VistaInsumos extends Model
         'fk_categoria' =>'integer',
         'fk_color' =>'integer',
         'estado' =>'string',
-        'stock'  =>'integer'
+        'stock'  =>'integer',
+        'cantidad_pedida' =>'integer'
     ];
 
 }

@@ -11,9 +11,11 @@ use App\Models\DetalleAccion;
 use App\Models\TipoAccion;
 use Carbon\Carbon;
 use App\Http\Requests\Acciones\NotaExiste;
-use App\Http\Requests\Acciones\DetalleRequestMostrar;
+use App\Http\Requests\Acciones\EditarAccionRequest;
+use App\Models\Insumo;
 use App\Models\VistaDetalleAcciones;
 use Illuminate\Support\Facades\DB;
+use App\Http\Requests\Acciones\CancelarInsumoDetalleRequest;
 
 class AccionesController extends Controller
 {
@@ -41,10 +43,7 @@ class AccionesController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
-    {
-        //
-    }
+
 
     /**
      * Store a newly created resource in storage.
@@ -81,10 +80,11 @@ class AccionesController extends Controller
                 $detalle = new DetalleAccion();
                 $detalle->fk_accion = $acciones->id;
                 $detalle->fk_insumo = $items[$i]['fk_insumo'];
+                $detalle->no_item   = $items[$i]['no_item'];
                 $detalle->fk_tipo_accion = $acciones->fk_tipo_accion;
+                $detalle->registrado_por = $registrado_por;
                 $detalle->cantidad_solicitada = $items[$i]['cantidad_solicitada'];
                 $detalle->cantidad_confirmada = 0;
-                //$detalle->observacion = $items[$i]['observacion'];
                 $detalle->cantidad_pendiente  = $detalle->cantidad_solicitada - $detalle->cantidad_confirmada;
                 $detalle->usuario_crea = $acciones->usuario_crea;
                 $detalle->save();
@@ -94,6 +94,16 @@ class AccionesController extends Controller
                 $data['cantidad_confirmada'] = $this->sumarCantidadConfirmada($acciones->id);
                 $data['cantidad_pendiente']  = $this->sumarCantidadPendiente($acciones->id);
                 $dataAccionCantidad = Acciones::where('id_accion', $acciones->id)->update($data);
+
+                $consultarInsumo = Insumo::
+                select('id_insumo','cantidad_pedida')
+                ->where('id_insumo', $items[$i]['fk_insumo'])
+                ->get();
+                if (count($consultarInsumo) > 0) {
+                    $actualizarInsumo = new Insumo();
+                    $dataInsumo['cantidad_pedida'] = $consultarInsumo[0]['cantidad_pedida'] + $items[$i]['cantidad_solicitada'];
+                    $actualizarInsumo = Insumo::where('id_insumo', $items[$i]['fk_insumo'])->update($dataInsumo);
+                }
               }
               DB::commit();
               return response()->json([
@@ -143,6 +153,17 @@ class AccionesController extends Controller
         ->sum('cantidad_pendiente');
         return $cantidad_pendiente;
     }
+
+    public function sumarCantidadCancelada($id_accion)
+    {
+        $cantidad_pendiente = DetalleAccion::
+        select('id_detalle','cantidad_solicitada')
+        ->where('fk_accion', $id_accion)
+        ->where('estado','cancelado')
+        ->sum('cantidad_solicitada');
+        return $cantidad_pendiente;
+    }
+
 
     /**
      * Show the form for editing the specified resource.
@@ -197,12 +218,12 @@ class AccionesController extends Controller
         ->first();
         $detallesAcciones = VistaDetalleAcciones::
         select('id_detalle','fk_accion','tipo_accion','codigo','marca','modelo','categoria','nomenclatura','color','cantidad_solicitada',
-        'cantidad_confirmada','cantidad_pendiente','estado','observacion','registrado_por')
+        'cantidad_confirmada','cantidad_pendiente','estado','observacion','registrado_por','referencia','no_item','fk_insumo')
         ->where('estado','Pendiente')
         ->where('fk_accion', $id_accion)
         ->get();
 
-        $acciones->Detalles = $detallesAcciones;
+        $acciones->detalles = $detallesAcciones;
         return response()->json([
             "ok" =>true,
             "data"=>$acciones
@@ -212,8 +233,156 @@ class AccionesController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Acciones $acciones)
+    public function editarAccion(EditarAccionRequest $request)
     {
-        //
+        //Editar Acciones
+        try {
+            DB::beginTransaction();
+            $id_accion = $request->input('fk_accion');
+            $fk_tipo_accion = $request->input('fk_tipo_accion');
+            $validar  = Acciones::
+            where('id_accion', $id_accion)
+            ->where('estado', 'Pendiente')
+            ->count();
+            if ($validar) {
+               $data['fk_despacho'] = $request->input('fk_despacho');
+               $data['titulo_nota'] = ucwords($request->input('titulo_nota'));
+               $data['fecha_nota']  = Carbon::now()->format('Y-m-d');
+               $data['observacion'] = ucfirst($request->input('observacion'));
+               $data['usuario_modifica'] = strtoupper($request->input('usuario'));
+               $data['fecha_modifica']   = Carbon::now()->format('Y-m-d H:i:s');
+               $data["registrado_por"]   = strtoupper($request->input('registrado_por'));
+               $acciones = Acciones::where('id_accion', $id_accion)->update($data);
+
+               $items = $request->input('detalles');
+               for ($i=0; $i <count($items) ; $i++) { 
+                if (isset($items[$i]['id_detalle'])) {
+                   $detallesAccion = new DetalleAccion();
+                   $detalleData['fk_insumo'] = $items[$i]['fk_insumo'];
+                   $detalleData['cantidad_solicitada'] = $items[$i]['cantidad_solicitada'];
+                   $detalleData['cantidad_confirmada'] = 0;
+                   $detalleData['cantidad_pendiente']  = $detalleData['cantidad_solicitada'] -  $detalleData['cantidad_confirmada'];
+                   $detalleData['usuario_modifica']    = $data['usuario_modifica'];
+                   $detalleData['fecha_modifica']      = $data['fecha_modifica'];
+                   $detallesAccion = DetalleAccion::where('id_detalle', $items[$i]['id_detalle'])->update($detalleData);
+
+                   $dataAccionCantidad = new Acciones();
+                   $dataAccion['cantidad_solicitada'] = $this->sumarCantidadSolicitada($id_accion);
+                   $dataAccion['cantidad_confirmada'] = $this->sumarCantidadConfirmada($id_accion);
+                   $dataAccion['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
+                   $dataAccionCantidad = Acciones::where('id_accion', $id_accion)->update($dataAccion);
+                } else {
+                    $detalleNuevo = new DetalleAccion();
+                    $detalleNuevo->no_item = $items[$i]['no_item'];
+                    $detalleNuevo->fk_tipo_accion = $fk_tipo_accion;
+                    $detalleNuevo->fk_accion = $id_accion;
+                    $detalleNuevo->fk_insumo = $items[$i]['fk_insumo'];
+                    $detalleNuevo->cantidad_solicitada = $items[$i]['cantidad_solicitada'];
+                    $detalleNuevo->cantidad_confirmada = 0;
+                    $detalleNuevo->cantidad_pendiente =   $detalleNuevo->cantidad_solicitada - $detalleNuevo->cantidad_confirmada;
+                    $detalleNuevo->registrado_por =  $data["registrado_por"];
+                    $detalleNuevo->usuario_crea =  $data['usuario_modifica'];
+                    $detalleNuevo->save();
+
+                    $dataAcciones= new Acciones();
+                    $dataAccion['cantidad_solicitada'] = $this->sumarCantidadSolicitada($id_accion);
+                    $dataAccion['cantidad_confirmada'] = $this->sumarCantidadConfirmada($id_accion);
+                    $dataAccion['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
+                    $dataAcciones = Acciones::where('id_accion', $id_accion)->update($dataAccion);
+
+                    $consultarInsumo = Insumo::
+                    select('id_insumo','cantidad_pedida')
+                    ->where('id_insumo', $items[$i]['fk_insumo'])
+                    ->get();
+                    if (count($consultarInsumo) > 0) {
+                        $actualizarInsumo = new Insumo();
+                        $dataInsumo['cantidad_pedida'] = $consultarInsumo[0]['cantidad_pedida'] + $items[$i]['cantidad_solicitada'];
+                        $actualizarInsumo = Insumo::where('id_insumo', $items[$i]['fk_insumo'])->update($dataInsumo);
+                    }
+                    }
+               }
+               DB::commit();
+               return response()->json([
+                "data" =>true,
+                "ok" =>$acciones,
+                "exitoso" =>'Se guardo satisfactoriamente'
+               ]);
+            } else {
+                return 'No se puede editar esta solicitud';
+            }
+        } catch (\Exception $th) {
+            DB::rollBack();
+            return response()->json([
+                "ok" =>false,
+                "data"=>$th->getMessage(),
+                "errorRegistro" =>'Hubo un error consulte con el Administrador del sistema'
+            ]);
+        }
+
     }
+
+    public function traerUltimoRegistro(){
+        $acciones =  Acciones::
+        select('id_accion')
+        ->orderBy('id_accion', 'desc')
+        ->first();
+        return response()->json([
+            "ok"=>true,
+            "data"=>$acciones
+        ]);
+    }
+
+    public function cancelarInsumo(CancelarInsumoDetalleRequest $request){
+        DB::beginTransaction();
+        try {
+            $id_detalle = $request->input('id_detalle');
+            $fk_insumo  = $request->input('fk_insumo');
+            $usuario    = strtoupper($request->input('usuario'));
+            $id_accion  = $request->input('id_accion');
+            $cantidad_solicitada = $request->input('cantidad_solicitada');
+            $consulta   = DetalleAccion::
+            select('id_detalle','fk_insumo', 'cantidad_solicitada')
+            ->where('id_detalle', $id_detalle)
+            ->where('fk_insumo', $fk_insumo)
+            ->where('cantidad_confirmada', '>', 0)
+            ->get();
+            if (count($consulta) > 0) {
+                return 'No se puede cancelar este artículo';
+            } else {
+                $detalleAcciones = DetalleAccion::where('id_detalle', $id_detalle)->delete();
+                $dataAccionCantidad = new Acciones();
+                $dataAccion['cantidad_solicitada'] = $this->sumarCantidadSolicitada($id_accion);
+                $dataAccion['cantidad_confirmada'] = $this->sumarCantidadConfirmada($id_accion);
+                $dataAccion['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
+                $dataAccionCantidad = Acciones::where('id_accion', $id_accion)->update($dataAccion);
+
+                $consultarInsumo = Insumo::
+                select('id_insumo','cantidad_pedida')
+                ->where('id_insumo', $fk_insumo)
+                ->get();
+                if (count($consultarInsumo) > 0) {
+                    $actualizarInsumo = new Insumo();
+                    $dataInsumo['cantidad_pedida'] = $consultarInsumo[0]['cantidad_pedida'] - $cantidad_solicitada;
+                    $actualizarInsumo = Insumo::where('id_insumo', $fk_insumo)->update($dataInsumo);
+                }
+
+                DB::commit();
+                return response()->json([
+                    "ok" =>true,
+                    "data"=>$detalleAcciones,
+                    "canceladoInsumo" =>'Se canceló satisfactoriamente'
+
+                ]);
+            }
+        } catch (\Exception $th) {
+            DB::rollBack();
+            return response()->json([
+                "ok" =>false,
+                "data"=>$th->getMessage(),
+                "errorCanceladoInsumo" =>'Hubo un error consulte con el Administrador del sistema'
+            ]);
+        }
+    }
+
+
 }

@@ -22,6 +22,7 @@ class DetalleAccion extends Model
         'cantidad_solicitada' =>'integer',
         'cantidad_confirmada' =>'integer',
         'cantidad_pendiente'  =>'integer',
-        'fk_accion'           =>'integer'
+        'fk_accion'           =>'integer',
+        'fk_insumo'           =>'integer'
     ];
 }
