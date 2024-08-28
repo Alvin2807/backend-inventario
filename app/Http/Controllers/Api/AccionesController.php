@@ -16,6 +16,8 @@ use App\Models\Insumo;
 use App\Models\VistaDetalleAcciones;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Acciones\CancelarInsumoDetalleRequest;
+use App\Http\Requests\Acciones\CancelarRequest;
+use App\Http\Requests\Acciones\ConfirmarSolicitudRequest;
 
 class AccionesController extends Controller
 {
@@ -144,6 +146,7 @@ class AccionesController extends Controller
         ->sum('cantidad_confirmada');
         return $cantidad_confirmada;
     }
+
 
     public function sumarCantidadPendiente($id_accion)
     {
@@ -351,6 +354,7 @@ class AccionesController extends Controller
             } else {
                 $detalleAcciones = DetalleAccion::where('id_detalle', $id_detalle)->delete();
                 $dataAccionCantidad = new Acciones();
+                $dataAccion['usuario_modifica'] = $usuario;
                 $dataAccion['cantidad_solicitada'] = $this->sumarCantidadSolicitada($id_accion);
                 $dataAccion['cantidad_confirmada'] = $this->sumarCantidadConfirmada($id_accion);
                 $dataAccion['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
@@ -380,6 +384,181 @@ class AccionesController extends Controller
                 "ok" =>false,
                 "data"=>$th->getMessage(),
                 "errorCanceladoInsumo" =>'Hubo un error consulte con el Administrador del sistema'
+            ]);
+        }
+    }
+
+    public function cancelarAccion(CancelarRequest $request){
+        try {
+           DB::beginTransaction();
+           $id_accion = $request->input('id_accion');
+           $usuario   = strtoupper($request->input('usuario'));
+           $consulta  = Acciones::
+           select('id_accion')
+           ->where('id_accion', $id_accion)
+           ->where('estado', 'Pendiente')
+           ->get();
+           if (count($consulta) > 0) {
+            $acciones = new Acciones();
+            $accionesData['estado'] = 'Cancelado';
+            $accionesData['fecha_modifica'] = Carbon::now()->format('Y-m-d H:i:s');
+            $accionesData['usuario_modifica'] = $usuario;
+            $acciones = Acciones::where('id_accion', $id_accion)->update($accionesData);
+
+            $items = $request->input('detalles');
+            for ($i=0; $i <count($items) ; $i++) { 
+                if (isset($items[$i]['id_detalle'])) {
+                    $detalleAccion = new DetalleAccion();
+                    $detalleData['estado'] =  $accionesData['estado'];
+                    $detalleData['usuario_modifica'] = $accionesData['usuario_modifica'];
+                    $detalleData['fecha_modifica'] =  $accionesData['fecha_modifica'];
+                    $detalleAccion = DetalleAccion::where('id_detalle', $items[$i]['id_detalle'])->update($detalleData);
+
+                    $consultarInsumo = Insumo::
+                    select('id_insumo','cantidad_pedida')
+                    ->where('id_insumo', $items[$i]['fk_insumo'])
+                    ->get();
+                    if (count($consultarInsumo) > 0) {
+                        $actualizarInsumo = new Insumo();
+                        $dataInsumo['cantidad_pedida'] = $consultarInsumo[0]['cantidad_pedida'] - $items[$i]['cantidad_solicitada'];
+                        $actualizarInsumo = Insumo::where('id_insumo', $items[$i]['fk_insumo'])->update($dataInsumo);
+                    }
+                }
+            }
+            DB::commit();
+            return response()->json([
+                "ok" =>true,
+                "data"=>$acciones,
+                "exitosoCancelado" =>'Se canceló satisfactoriamente'
+            ]);
+            
+           } else {
+            return 'No se puede cancelar esta acción';
+           }
+        } catch (\Exception $th) {
+            DB::rollBack();
+            return response()->json([
+                "ok" =>false,
+                "data"=>$th->getMessage(),
+                "errorCancelado"=>'Hubo un error consulte con el Administrador del sistema'
+            ]);
+        }
+    }
+
+    public function cofirmarSolicitud(ConfirmarSolicitudRequest $request){
+        try {
+            DB::beginTransaction();
+            $id_accion = $request->input('id_accion');
+            $consulta  = Acciones::
+            where('id_accion', $id_accion)
+            ->where('estado', 'Pendiente')
+            ->get();
+        
+            if (count($consulta) > 0) {
+                $acciones = new Acciones();
+                $data['fk_despacho'] = $request->input('fk_despacho');
+                $data['titulo_nota'] = ucwords($request->input('titulo_nota'));
+                $data['fecha_nota']  = Carbon::now()->format('Y-m-d');
+                $data['observacion'] = ucfirst($request->input('observacion'));
+                $data['usuario_modifica'] = strtoupper($request->input('usuario'));
+                $data['fecha_modifica']   = Carbon::now()->format('Y-m-d H:i:s');
+                $data["registrado_por"]   = strtoupper($request->input('registrado_por'));
+                $acciones = Acciones::where('id_accion', $id_accion)->update($data);
+
+                $items = $request->input('detalles');
+                for ($i=0; $i <count($items) ; $i++) { 
+                    $consultaDetalle = DetalleAccion::
+                    select('id_detalle','cantidad_solicitada','cantidad_confirmada','cantidad_pendiente','fk_insumo')
+                    ->where('id_detalle', $items[$i]['id_detalle'])
+                    ->where('fk_accion', $id_accion)
+                    ->where('estado', 'Pendiente')
+                    ->get();
+                    if (count($consultaDetalle) > 0) {
+                        if (isset($items[$i]['id_detalle'])) {
+                            $detallesAccion = new DetalleAccion();
+                            $dataDetalle['cantidad_solicitada'] =  $items[$i]['cantidad_solicitada'];
+                            $dataDetalle['cantidad_confirmada'] =  $consultaDetalle[0]['cantidad_confirmada'] + $items[$i]['cantidad_solicitada'];
+                            $dataDetalle['cantidad_pendiente']  =  $items[$i]['cantidad_solicitada'] - $dataDetalle['cantidad_confirmada'];
+                            $dataDetalle['usuario_modifica']    =  $data['usuario_modifica'];
+                            $dataDetalle['fecha_modifica']      =  $data['fecha_modifica'];
+                            $detallesAccion = DetalleAccion::where('id_detalle', $items[$i]['id_detalle'])->update($dataDetalle);
+
+                            $consultarInsumo = Insumo::
+                            select('id_insumo','cantidad_pedida')
+                            ->where('id_insumo', $items[$i]['fk_insumo'])
+                            ->get();
+                            if (count($consultarInsumo) > 0) {
+                                $actualizarInsumo = new Insumo();
+                                $valorA = $consultarInsumo[0]['cantidad_pedida'] - $dataDetalle['cantidad_confirmada'];
+                                $valorB = $valorA - $valorA;
+                                $dataInsumo['cantidad_pedida']  = $valorB;
+                                $dataInsumo['usuario_modifica'] =  $data['usuario_modifica'];
+                                $dataInsumo['fecha_modifica']   =  $data['fecha_modifica'];
+                                $dataInsumo['stock'] =  $consultarInsumo[0]['stock'] + $items[$i]['cantidad_solicitada'];
+                                $actualizarInsumo = Insumo::where('id_insumo', $items[$i]['fk_insumo'])->update($dataInsumo);
+                            }
+
+                        }
+                
+                    }
+
+                    $consultaEstadoDetalle = DetalleAccion::
+                    select('id_detalle','cantidad_confirmada','cantidad_solicitada')
+                    ->where('id_detalle', $items[$i]['id_detalle'])
+                    ->where('estado','Pendiente')
+                    ->get();
+                    if (count($consultaDetalle) > 0) {
+                        $actualizarDetalles = new DetalleAccion();
+                        if ($consultaEstadoDetalle[0]['cantidad_confirmada'] == $consultaEstadoDetalle[0]['cantidad_solicitada']) {
+                            $dataActualizarEstado['estado'] = 'Completado';
+                            $dataActualizarEstado['usuario_modifica'] =  $data['usuario_modifica'];
+                            $dataActualizarEstado['fecha_modifica']   =  $data['fecha_modifica'];
+                            $actualizarDetalles = DetalleAccion::where('id_detalle', $items[$i]['id_detalle'])->update($dataActualizarEstado);
+                        }
+
+                        $dataAccionActualizar = new Acciones();
+                        $dataAccion['usuario_modifica'] = $data['usuario_modifica'];
+                        $dataAccion['fecha_modifica'] =  $data['fecha_modifica'];
+                        $dataAccion['cantidad_solicitada'] = $this->sumarCantidadSolicitada($id_accion);
+                        $dataAccion['cantidad_confirmada'] = $this->sumarCantidadConfirmada($id_accion);
+                        $dataAccion['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
+                        $dataAccionActualizar = Acciones::where('id_accion', $id_accion)->update($dataAccion);
+
+                        $actualizarEstadoAccion = Acciones::
+                        select('id_accion','cantidad_confirmada','cantidad_solicitada')
+                        ->where('id_accion', $id_accion)
+                        ->where('estado', 'Pendiente')
+                        ->get();
+                        if (count($actualizarEstadoAccion) > 0) {
+                            $actualizar = new Acciones();
+                            if ($actualizarEstadoAccion[0]['cantidad_solicitada'] == $actualizarEstadoAccion[0]['cantidad_confirmada']) {
+                               $dataEstado['estado'] = 'Completado';
+                               $dataEstado['usuario_modifica'] = $data['usuario_modifica'];
+                               $dataEstado['fecha_modifica']   =  $data['fecha_modifica'];
+                               $actualizar = Acciones::where('id_accion', $id_accion)->update($dataEstado);
+                            }
+                        }
+                        
+                    }
+                
+                }
+
+                DB::commit();
+                return response()->json([
+                    "ok" =>true,
+                    "data" =>$consulta,
+                    "confirmado" =>'Se confirmo satisfactoriamente'
+                ]);
+               
+            } else {
+                return 'No se puede confirmar esta solicitud';
+            }
+        } catch (\Exception $th) {
+            DB::rollBack();
+            return response()->json([
+                "ok" =>false,
+                "data"=>$th->getMessage(),
+                "errorConfirmado" =>'Hubo un error consulte con el Administrador del sistema'
             ]);
         }
     }
