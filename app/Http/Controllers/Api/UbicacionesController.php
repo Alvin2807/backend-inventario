@@ -13,7 +13,15 @@ class UbicacionesController extends Controller
      */
     public function index()
     {
-        //
+        //Motrar ubicaciones
+        $ubicacion = Ubicacion::
+        select('id_ubicacion','fk_deposito','stock','fk_insumo')
+        ->where('stock', '>', 0)
+       ->get();
+       return response()->json([
+        "ok" =>true,
+        "data"=>$ubicacion
+       ]);
     }
 
     /**

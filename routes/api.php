@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\DespachosController;
 use App\Http\Controllers\Api\InsumosController;
 use App\Http\Controllers\Api\DepositosController;
+use App\Http\Controllers\Api\UbicacionesController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -32,10 +34,12 @@ Route::apiResource('login', LoginController::class);
 Route::apiResource('despachos', DespachosController::class);
 Route::apiResource('insumos',InsumosController::class);
 Route::apiResource('depositos', DepositosController::class);
+Route::apiResource('ubicacion',UbicacionesController::class);
 Route::get('traer_ultimo_registro_accion', [AccionesController::class,'traerUltimoRegistro']);
 Route::get('despachos_alternos',[DespachosController::class,'MostrarDespachosAlternos']);
 Route::get('total_notas', [AccionesController::class,'mostrarContadorNota']);
 Route::get('acciones_pendientes/{id_accion}', [AccionesController::class,'accionesPendientes']);
+Route::get('mostrar_jefe_despacho/{id_despacho}',[DespachosController::class,'mostrarDespachoJefe']);
 Route::get('mostrar_modelos_por_marcas/{fk_marca}', [ModelosController::class,'selecionarMarcaModelo']);
 Route::put('editar_solicitud', [AccionesController::class,'editarSolicitud']);
 Route::put('confirmar_solicitud',[AccionesController::class,'cofirmarSolicitud']);

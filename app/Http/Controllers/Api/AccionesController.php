@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Requests\Acciones\CancelarInsumoDetalleRequest;
 use App\Http\Requests\Acciones\CancelarRequest;
 use App\Http\Requests\Acciones\ConfirmarSolicitudRequest;
+use App\Models\Deposito;
+use App\Models\Ubicacion;
 
 class AccionesController extends Controller
 {
@@ -492,12 +494,43 @@ class AccionesController extends Controller
                                 $valorA = $consultarInsumo[0]['cantidad_pedida'] - $dataDetalle['cantidad_confirmada'];
                                 $valorB = $valorA - $valorA;
                                 $dataInsumo['cantidad_pedida']  = $valorB;
+                                $dataInsumo['estado'] = 'Disponible';
                                 $dataInsumo['usuario_modifica'] =  $data['usuario_modifica'];
                                 $dataInsumo['fecha_modifica']   =  $data['fecha_modifica'];
                                 $dataInsumo['stock'] =  $consultarInsumo[0]['stock'] + $items[$i]['cantidad_solicitada'];
                                 $actualizarInsumo = Insumo::where('id_insumo', $items[$i]['fk_insumo'])->update($dataInsumo);
-                            }
 
+                                $consultaDeposito = Deposito::
+                                select('id_deposito','estado')
+                                ->where('estado', 'P')
+                                ->get();
+                                if (count($consultaDeposito) > 0) {
+                                    $consultaUbicacion = Ubicacion::
+                                    select('id_ubicacion','stock','fk_deposito','fk_insumo')
+                                    ->where('fk_insumo', $items[$i]['fk_insumo'])
+                                    ->where('fk_deposito', $consultaDeposito[0]['id_deposito'])
+                                    ->get();
+                                    if (count($consultaUbicacion) > 0) {
+                                        $actualizarUbicacion = new Ubicacion();
+                                        $dataUbicacion['fk_insumo']   =  $items[$i]['fk_insumo'];
+                                        $dataUbicacion['fk_deposito'] =  $consultaDeposito[0]['id_deposito'];
+                                        $dataUbicacion['stock']       = $consultaUbicacion[0]['stock'] + $items[$i]['cantidad_solicitada'];
+                                        $dataUbicacion['usuario_modifica'] =  $data['usuario_modifica'];
+                                        $dataUbicacion['fecha_modifica']   =  $data['fecha_modifica'];
+                                        $actualizarUbicacion = Ubicacion::where('id_ubicacion', $consultaUbicacion[0]['id_ubicacion'])->update($dataUbicacion);
+                                    } else {
+                                        $registrarUbicacion = new Ubicacion();
+                                        $registrarUbicacion->fk_insumo   = $items[$i]['fk_insumo'];
+                                        $registrarUbicacion->fk_deposito = $consultaDeposito[0]['id_deposito'];
+                                        $registrarUbicacion->stock = $items[$i]['cantidad_solicitada'];
+                                        $registrarUbicacion->usuario_crea = $data['usuario_modifica'];
+                                        $registrarUbicacion->save();
+                                    }
+                                }
+
+                               
+
+                            }
                         }
                 
                     }
@@ -533,6 +566,7 @@ class AccionesController extends Controller
                             $actualizar = new Acciones();
                             if ($actualizarEstadoAccion[0]['cantidad_solicitada'] == $actualizarEstadoAccion[0]['cantidad_confirmada']) {
                                $dataEstado['estado'] = 'Completado';
+                               $dataEstado['fecha_confirmacion'] = $data['fecha_modifica'];
                                $dataEstado['usuario_modifica'] = $data['usuario_modifica'];
                                $dataEstado['fecha_modifica']   =  $data['fecha_modifica'];
                                $actualizar = Acciones::where('id_accion', $id_accion)->update($dataEstado);
@@ -540,13 +574,12 @@ class AccionesController extends Controller
                         }
                         
                     }
-                
                 }
 
                 DB::commit();
                 return response()->json([
                     "ok" =>true,
-                    "data" =>$consulta,
+                    "data" =>$acciones,
                     "confirmado" =>'Se confirmo satisfactoriamente'
                 ]);
                

@@ -63,17 +63,6 @@ class InsumosController extends Controller
             $insumos->codigo = $codigo;
             $insumos->usuario_crea = strtoupper($request->input('usuario'));
             $insumos->save();
-
-            $nomenclaturas = new Nomenclatura();
-            $consultaNomenclatura = Nomenclatura::
-            select('id_nomenclatura', 'nomenclatura')
-            ->where('id_nomenclatura', $insumos->fk_nomenclatura)
-            ->get();
-            if (count($consultaNomenclatura) > 0) {
-               $actualizarNomenclatura = new Nomenclatura();
-               $data['producto_agregado'] = 'SI';
-               $actualizarNomenclatura = Nomenclatura::where('id_nomenclatura', $insumos->fk_nomenclatura)->update($data);
-            }
             DB::commit();
             return response()->json([
                 "ok" =>true,
@@ -144,7 +133,7 @@ class InsumosController extends Controller
            return response()->json([
             "ok" =>false,
             "data"=>$th->getMessage(),
-            "errorInsumo"=>'Hubo un error consulte con el Administrador del sistema'
+            "errorInsumoEditar"=>'Hubo un error consulte con el Administrador del sistema'
            ]);
         }
     }
