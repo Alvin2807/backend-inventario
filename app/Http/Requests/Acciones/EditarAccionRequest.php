@@ -25,8 +25,6 @@ class EditarAccionRequest extends FormRequest
             'fk_accion'   =>'required|integer',
             'fk_tipo_accion' =>'required|integer',
             'fk_despacho' =>'required|integer',
-            "titulo_nota" =>'required|string',
-            "observacion" =>'required|string',
             "usuario"     =>'required|string',
             "detalles"    =>'sometimes|array|min:1',
             "detalles.*.fk_insumo" =>'required|integer',

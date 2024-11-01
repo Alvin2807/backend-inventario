@@ -51,9 +51,28 @@ class DespachosController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Despacho $despacho)
+    public function mostrarDespachosLogueado($id_despacho)
     {
-        //
+        $despacho = VistaDespachoInterno::
+        select('id_despacho','cod_empleado','apellido','nombre','cargo','profesion','siglas','despacho','provincia')
+        ->where('id_despacho', $id_despacho)
+        ->get();
+        return response()->json([
+            "ok" =>true,
+            "data"=>$despacho
+        ]);
+    }
+
+    public function mostrarDatosUsarioDespacho($id_despacho)
+    {
+        $despacho =Despacho::
+        select('id_despacho','cod_empleado','apellido','nombre','cargo','profesion','siglas','despacho')
+        ->where('id_despacho', $id_despacho)
+        ->get();
+        return response()->json([
+            "ok" =>true,
+            "data"=>$despacho
+        ]);
     }
 
     /**

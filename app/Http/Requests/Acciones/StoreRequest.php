@@ -22,8 +22,16 @@ class StoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'no_nota'                 =>'nullable|string',
-            'fecha_nota'              =>'nullable|date',
+            "tipo_accion"             =>'required|string',
+            'no_entrada'              =>'nullable|string',
+            'fk_despacho'             =>'required|integer',
+            'fk_tipo_accion'          =>'required|integer',
+            'fecha_entrada'           =>'nullable|date',
+            'fecha_confirmacion'      =>'nullable|date',
+            'detalles'                 =>'sometimes|array|min:1',
+            'detalles.*.fk_insumo'     =>'required|integer',
+            'detalles.*.cantidad_solicitada' =>'required|integer'
+            /* 'fecha_nota'              =>'nullable|date',
             'fecha_confirmacion'      =>'nullable|date',
             'no_incidencia'           =>'nullable|string',
             'titulo_nota'             =>'nullable|string|max:80',
@@ -36,8 +44,8 @@ class StoreRequest extends FormRequest
             'usuario'                 =>'required|string',
             'detalle'                 =>'sometimes|array|min:1',
             'detalle.*.fk_insumo'     =>'required|integer',
-            'detalle.*.cantidad_solicitada' =>'required|integer',
-            //'detalle.*.observacion'   =>'nullable|string'
+            'detalle.*.cantidad_solicitada' =>'required|integer', */
+
         ];
     }
 }

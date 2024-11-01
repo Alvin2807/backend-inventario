@@ -11,8 +11,8 @@ class Acciones extends Model
 
     public    $table        = 'ins_acciones';
     protected $primarykey   = 'id_accion';
-    protected $fillable     = ['id_accion','fk_despacho','fk_despacho_solicitud','no_nota','titulo_nota','fecha_nota','fecha_confirmacion',
-    'no_incidencia','observacion','estado','fk_tipo_accion','registrado_por', 'cantidad_solicitada','cantidad_confirmada','cantidad_pendiente'];
+    protected $fillable     = ['id_accion','fk_despacho','no_control','no_salida','fecha_entrada','fecha_salida','fecha_confirmacion','no_incidencia','estado','fk_tipo_accion',
+    'cantidad_solicitada','cantidad_confirmada','cantidad_pendiente'];
     public    $incrementing = true;
     public    $timestamps   = false;
 
@@ -20,13 +20,13 @@ class Acciones extends Model
     [
         'id_accion'             =>'integer',
         'fk_despacho'           =>'integer',
-        'fk_despacho_solicitud' =>'integer',
-        'no_nota'               =>'string',
-        'titulo_nota'           =>'string',
-        'fecha_nota'            =>'datetime:Y-m-d',
+        'no_control'            =>'string',
+        'no_salida'             =>'string',
+        'fecha_entrada'         =>'datetime:Y-m-d',
+        'fecha_salida'          =>'datetime:Y-m-d',
         'fecha_confirmacion'    =>'datetime:Y-m-d',
         'no_incidencia'         =>'integer',
-        'observacion'           =>'string',
+        'estado'                =>'string',
         'fk_tipo_accion'        =>'integer',
         'cantidad_solicitada'   =>'integer',
         'cantidad_confirmada'   =>'integer',

@@ -20,6 +20,7 @@ use App\Http\Requests\Acciones\CancelarRequest;
 use App\Http\Requests\Acciones\ConfirmarSolicitudRequest;
 use App\Models\Deposito;
 use App\Models\Ubicacion;
+use App\Utils\Utilidades;
 
 class AccionesController extends Controller
 {
@@ -30,9 +31,8 @@ class AccionesController extends Controller
     {
         //Mostrar acciones pendientes
         $acciones = VistaAciones::
-        select('id_accion','registrado_por','no_nota','fecha_nota','fecha_confirmacion','titulo_nota','no_incidencia','observacion',
-        'fk_tipo_accion','fk_despacho','estado','despacho','tipo_accion','registrado_por',
-        'cantidad_solicitada','cantidad_confirmada','cantidad_pendiente')
+        select('id_accion','no_control','no_salida','fecha_entrada','fecha_salida','fecha_confirmacion','no_incidencia',
+        'fk_tipo_accion','fk_despacho','estado','despacho','tipo_accion','cantidad_solicitada','cantidad_confirmada','cantidad_pendiente')
         ->where('estado','Pendiente')
         ->orderBy('id_accion', 'desc')
         ->get();
@@ -59,24 +59,13 @@ class AccionesController extends Controller
             DB::beginTransaction();
             $tipo_accion = strtoupper($request->input('tipo_accion'));
             if ($tipo_accion == 'ENTRADA') {
-              $no_nota     = strtoupper($request->input('no_nota'));
-              $fecha_nota  = Carbon::now()->format('Y-m-d');
-              $titulo_nota = ucwords($request->input('titulo_nota'));
-              $fk_tipo_accion = $request->input('fk_tipo_accion');
-              $fk_despacho = $request->input('fk_despacho');
-              $registrado_por = strtoupper($request->input('registrado_por'));
-              $observacion = ucfirst($request->input('observacion'));
-              $usuario = strtoupper($request->input('usuario'));
-
               $acciones = new Acciones();
-              $acciones->no_nota        = $no_nota;
-              $acciones->fecha_nota     = $fecha_nota;
-              $acciones->titulo_nota    = $titulo_nota;
-              $acciones->fk_tipo_accion = $fk_tipo_accion;
-              $acciones->usuario_crea = $usuario;
-              $acciones->fk_despacho = $fk_despacho;
-              $acciones->registrado_por = $registrado_por;
-              $acciones->observacion = $observacion;
+              $acciones->fk_despacho    = $request->input('fk_despacho');
+              $acciones->no_control     = strtoupper($request->input('no_control'));
+              $acciones->fk_tipo_accion = $request->input('fk_tipo_accion');
+              $acciones->fecha_entrada  = Utilidades::formatoFecha($request->input('fecha_entrada'));
+              $acciones->usuario_crea   = strtoupper($request->input('usuario'));
+              $acciones->estado         = "Pendiente";
               $acciones->save();
 
               $items = $request->input('detalles');
@@ -86,11 +75,11 @@ class AccionesController extends Controller
                 $detalle->fk_insumo = $items[$i]['fk_insumo'];
                 $detalle->no_item   = $items[$i]['no_item'];
                 $detalle->fk_tipo_accion = $acciones->fk_tipo_accion;
-                $detalle->registrado_por = $registrado_por;
                 $detalle->cantidad_solicitada = $items[$i]['cantidad_solicitada'];
                 $detalle->cantidad_confirmada = 0;
                 $detalle->cantidad_pendiente  = $detalle->cantidad_solicitada - $detalle->cantidad_confirmada;
                 $detalle->usuario_crea = $acciones->usuario_crea;
+                $detalle->estado =  $acciones->estado;
                 $detalle->save();
 
                 $dataAccionCantidad = new Acciones();
@@ -108,7 +97,9 @@ class AccionesController extends Controller
                     $dataInsumo['cantidad_pedida'] = $consultarInsumo[0]['cantidad_pedida'] + $items[$i]['cantidad_solicitada'];
                     $actualizarInsumo = Insumo::where('id_insumo', $items[$i]['fk_insumo'])->update($dataInsumo);
                 }
+
               }
+              
               DB::commit();
               return response()->json([
                 "ok"=>true,
@@ -199,10 +190,10 @@ class AccionesController extends Controller
         }
     }
 
-    public function mostrarContadorNota(){
+    public function mostrarContador(){
         $acciones = VistaAciones::
         select('id_accion', 'tipo_accion')
-        ->where('tipo_accion', 'ENTRADA')
+        ->where('fk_tipo_accion', 1)
         ->count();
         return response()->json([
             "ok" =>true,
@@ -220,11 +211,13 @@ class AccionesController extends Controller
         $acciones = VistaAciones::all()
         ->where('estado', 'Pendiente')
         ->where('id_accion', $id_accion)
+        ->where('estado','Pendiente')
         ->first();
         $detallesAcciones = VistaDetalleAcciones::
-        select('id_detalle','fk_accion','tipo_accion','codigo','marca','modelo','categoria','nomenclatura','color','cantidad_solicitada',
-        'cantidad_confirmada','cantidad_pendiente','estado','observacion','registrado_por','referencia','no_item','fk_insumo')
+        select('id_detalle','fk_insumo','codigo','marca','modelo','categoria','nomenclatura','color','cantidad_pendiente',
+        'cantidad_confirmada','cantidad_solicitada','estado','no_item','fk_accion','referencia')
         ->where('estado','Pendiente')
+        ->orderBy('id_detalle', 'asc')
         ->where('fk_accion', $id_accion)
         ->get();
 
@@ -251,12 +244,9 @@ class AccionesController extends Controller
             ->count();
             if ($validar) {
                $data['fk_despacho'] = $request->input('fk_despacho');
-               $data['titulo_nota'] = ucwords($request->input('titulo_nota'));
-               $data['fecha_nota']  = Carbon::now()->format('Y-m-d');
-               $data['observacion'] = ucfirst($request->input('observacion'));
+               $data['fecha_entrada']  = Carbon::now()->format('Y-m-d');
                $data['usuario_modifica'] = strtoupper($request->input('usuario'));
                $data['fecha_modifica']   = Carbon::now()->format('Y-m-d H:i:s');
-               $data["registrado_por"]   = strtoupper($request->input('registrado_por'));
                $acciones = Acciones::where('id_accion', $id_accion)->update($data);
 
                $items = $request->input('detalles');
@@ -276,6 +266,16 @@ class AccionesController extends Controller
                    $dataAccion['cantidad_confirmada'] = $this->sumarCantidadConfirmada($id_accion);
                    $dataAccion['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
                    $dataAccionCantidad = Acciones::where('id_accion', $id_accion)->update($dataAccion);
+
+                   $consultarInsumoExite = Insumo::
+                    select('id_insumo','cantidad_pedida')
+                    ->where('id_insumo', $items[$i]['fk_insumo'])
+                    ->get();
+                    if (count($consultarInsumoExite) > 0) {
+                        $actualizarInsumoExite = new Insumo();
+                        $dataInsumoExiste['cantidad_pedida'] = $consultarInsumoExite[0]['cantidad_pedida'] + $items[$i]['cantidad_solicitada'] - $items[$i]['cantidad_solicitada'];
+                        $actualizarInsumoExite = Insumo::where('id_insumo', $items[$i]['fk_insumo'])->update($dataInsumoExiste);
+                    } 
                 } else {
                     $detalleNuevo = new DetalleAccion();
                     $detalleNuevo->no_item = $items[$i]['no_item'];
@@ -285,7 +285,6 @@ class AccionesController extends Controller
                     $detalleNuevo->cantidad_solicitada = $items[$i]['cantidad_solicitada'];
                     $detalleNuevo->cantidad_confirmada = 0;
                     $detalleNuevo->cantidad_pendiente =   $detalleNuevo->cantidad_solicitada - $detalleNuevo->cantidad_confirmada;
-                    $detalleNuevo->registrado_por =  $data["registrado_por"];
                     $detalleNuevo->usuario_crea =  $data['usuario_modifica'];
                     $detalleNuevo->save();
 
