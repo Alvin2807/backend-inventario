@@ -244,7 +244,7 @@ class AccionesController extends Controller
             ->count();
             if ($validar) {
                $data['fk_despacho'] = $request->input('fk_despacho');
-               $data['fecha_entrada']  = Carbon::now()->format('Y-m-d');
+               $data['fecha_entrada']  = Utilidades::formatoFecha($request->input('fecha_entrada'));
                $data['usuario_modifica'] = strtoupper($request->input('usuario'));
                $data['fecha_modifica']   = Carbon::now()->format('Y-m-d H:i:s');
                $acciones = Acciones::where('id_accion', $id_accion)->update($data);
@@ -253,8 +253,13 @@ class AccionesController extends Controller
                for ($i=0; $i <count($items) ; $i++) { 
                 if (isset($items[$i]['id_detalle'])) {
                    $detallesAccion = new DetalleAccion();
+                   $consultarDetalle = DetalleAccion::
+                   select('id_detalle','cantidad_solicitada')
+                   ->where('fk_insumo', $items[$i]['fk_insumo'])
+                   ->where('fk_accion', $id_accion )
+                   ->get();
                    $detalleData['fk_insumo'] = $items[$i]['fk_insumo'];
-                   $detalleData['cantidad_solicitada'] = $items[$i]['cantidad_solicitada'];
+                   $detalleData['cantidad_solicitada'] = $consultarDetalle[0]['cantidad_solicitada'] - $consultarDetalle[0]['cantidad_solicitada'] + $items[$i]['cantidad_solicitada'];
                    $detalleData['cantidad_confirmada'] = 0;
                    $detalleData['cantidad_pendiente']  = $detalleData['cantidad_solicitada'] -  $detalleData['cantidad_confirmada'];
                    $detalleData['usuario_modifica']    = $data['usuario_modifica'];
@@ -273,7 +278,7 @@ class AccionesController extends Controller
                     ->get();
                     if (count($consultarInsumoExite) > 0) {
                         $actualizarInsumoExite = new Insumo();
-                        $dataInsumoExiste['cantidad_pedida'] = $consultarInsumoExite[0]['cantidad_pedida'] + $items[$i]['cantidad_solicitada'] - $items[$i]['cantidad_solicitada'];
+                        $dataInsumoExiste['cantidad_pedida'] = $consultarInsumoExite[0]['cantidad_pedida'] - $consultarDetalle[0]['cantidad_solicitada'] + $items[$i]['cantidad_solicitada'];
                         $actualizarInsumoExite = Insumo::where('id_insumo', $items[$i]['fk_insumo'])->update($dataInsumoExiste);
                     } 
                 } else {
@@ -341,6 +346,7 @@ class AccionesController extends Controller
         try {
             $id_detalle = $request->input('id_detalle');
             $fk_insumo  = $request->input('fk_insumo');
+            $fk_accion  = $request->input('fk_accion');
             $usuario    = strtoupper($request->input('usuario'));
             $id_accion  = $request->input('id_accion');
             $cantidad_solicitada = $request->input('cantidad_solicitada');
@@ -356,10 +362,9 @@ class AccionesController extends Controller
                 $detalleAcciones = DetalleAccion::where('id_detalle', $id_detalle)->delete();
                 $dataAccionCantidad = new Acciones();
                 $dataAccion['usuario_modifica'] = $usuario;
-                $dataAccion['cantidad_solicitada'] = $this->sumarCantidadSolicitada($id_accion);
-                $dataAccion['cantidad_confirmada'] = $this->sumarCantidadConfirmada($id_accion);
-                $dataAccion['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
-                $dataAccionCantidad = Acciones::where('id_accion', $id_accion)->update($dataAccion);
+                $dataAccion['cantidad_solicitada'] = $this->sumarCantidadSolicitada($fk_accion);
+                $dataAccion['cantidad_pendiente']  = $this->sumarCantidadPendiente($fk_accion);
+                $dataAccionCantidad = Acciones::where('id_accion', $fk_accion)->update($dataAccion);
 
                 $consultarInsumo = Insumo::
                 select('id_insumo','cantidad_pedida')
@@ -449,21 +454,17 @@ class AccionesController extends Controller
     public function cofirmarSolicitud(ConfirmarSolicitudRequest $request){
         try {
             DB::beginTransaction();
-            $id_accion = $request->input('id_accion');
+            $id_accion = $request->input('fk_accion');
             $consulta  = Acciones::
             where('id_accion', $id_accion)
             ->where('estado', 'Pendiente')
             ->get();
-        
             if (count($consulta) > 0) {
                 $acciones = new Acciones();
                 $data['fk_despacho'] = $request->input('fk_despacho');
-                $data['titulo_nota'] = ucwords($request->input('titulo_nota'));
-                $data['fecha_nota']  = Carbon::now()->format('Y-m-d');
-                $data['observacion'] = ucfirst($request->input('observacion'));
+                $data['fecha_entrada']  = Utilidades::formatoFecha($request->input('fecha_entrada'));
                 $data['usuario_modifica'] = strtoupper($request->input('usuario'));
                 $data['fecha_modifica']   = Carbon::now()->format('Y-m-d H:i:s');
-                $data["registrado_por"]   = strtoupper($request->input('registrado_por'));
                 $acciones = Acciones::where('id_accion', $id_accion)->update($data);
 
                 $items = $request->input('detalles');
@@ -484,8 +485,47 @@ class AccionesController extends Controller
                             $dataDetalle['fecha_modifica']      =  $data['fecha_modifica'];
                             $detallesAccion = DetalleAccion::where('id_detalle', $items[$i]['id_detalle'])->update($dataDetalle);
 
+                            $consultaEstadoDetalle = DetalleAccion::
+                            select('id_detalle','cantidad_confirmada','cantidad_solicitada')
+                            ->where('id_detalle', $items[$i]['id_detalle'])
+                            ->where('estado','Pendiente')
+                            ->get();
+                            if (count($consultaDetalle) > 0) {
+                                $actualizarDetalles = new DetalleAccion();
+                                if ($consultaEstadoDetalle[0]['cantidad_confirmada'] == $consultaEstadoDetalle[0]['cantidad_solicitada']) {
+                                    $dataActualizarEstado['estado'] = 'Completado';
+                                    $dataActualizarEstado['usuario_modifica'] =  $data['usuario_modifica'];
+                                    $dataActualizarEstado['fecha_modifica']   =  $data['fecha_modifica'];
+                                    $actualizarDetalles = DetalleAccion::where('id_detalle', $items[$i]['id_detalle'])->update($dataActualizarEstado);
+                                }
+                            } 
+
+                            $dataAccionActualizar = new Acciones();
+                            $dataAccion['usuario_modifica'] =  $data['usuario_modifica'];
+                            $dataAccion['fecha_modifica']   =  $data['fecha_modifica'];
+                            $dataAccion['cantidad_solicitada'] = $this->sumarCantidadSolicitada($id_accion);
+                            $dataAccion['cantidad_confirmada'] = $this->sumarCantidadConfirmada($id_accion);
+                            $dataAccion['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
+                            $dataAccionActualizar = Acciones::where('id_accion', $id_accion)->update($dataAccion);
+    
+                            $actualizarEstadoAccion = Acciones::
+                            select('id_accion','cantidad_confirmada','cantidad_solicitada')
+                            ->where('id_accion', $id_accion)
+                            ->where('estado', 'Pendiente')
+                            ->get();
+                            if (count($actualizarEstadoAccion) > 0) {
+                                $actualizar = new Acciones();
+                                if ($actualizarEstadoAccion[0]['cantidad_solicitada'] == $actualizarEstadoAccion[0]['cantidad_confirmada']) {
+                                   $dataEstado['estado'] = 'Completado';
+                                   $dataEstado['fecha_confirmacion'] = $data['fecha_modifica'];
+                                   $dataEstado['usuario_modifica']   = $data['usuario_modifica'];
+                                   $dataEstado['fecha_modifica']     =  $data['fecha_modifica'];
+                                   $actualizar = Acciones::where('id_accion', $id_accion)->update($dataEstado);
+                                }
+                            }
+
                             $consultarInsumo = Insumo::
-                            select('id_insumo','cantidad_pedida')
+                            select('id_insumo','cantidad_pedida','stock')
                             ->where('id_insumo', $items[$i]['fk_insumo'])
                             ->get();
                             if (count($consultarInsumo) > 0) {
@@ -498,79 +538,9 @@ class AccionesController extends Controller
                                 $dataInsumo['fecha_modifica']   =  $data['fecha_modifica'];
                                 $dataInsumo['stock'] =  $consultarInsumo[0]['stock'] + $items[$i]['cantidad_solicitada'];
                                 $actualizarInsumo = Insumo::where('id_insumo', $items[$i]['fk_insumo'])->update($dataInsumo);
-
-                                $consultaDeposito = Deposito::
-                                select('id_deposito','estado')
-                                ->where('estado', 'P')
-                                ->get();
-                                if (count($consultaDeposito) > 0) {
-                                    $consultaUbicacion = Ubicacion::
-                                    select('id_ubicacion','stock','fk_deposito','fk_insumo')
-                                    ->where('fk_insumo', $items[$i]['fk_insumo'])
-                                    ->where('fk_deposito', $consultaDeposito[0]['id_deposito'])
-                                    ->get();
-                                    if (count($consultaUbicacion) > 0) {
-                                        $actualizarUbicacion = new Ubicacion();
-                                        $dataUbicacion['fk_insumo']   =  $items[$i]['fk_insumo'];
-                                        $dataUbicacion['fk_deposito'] =  $consultaDeposito[0]['id_deposito'];
-                                        $dataUbicacion['stock']       = $consultaUbicacion[0]['stock'] + $items[$i]['cantidad_solicitada'];
-                                        $dataUbicacion['usuario_modifica'] =  $data['usuario_modifica'];
-                                        $dataUbicacion['fecha_modifica']   =  $data['fecha_modifica'];
-                                        $actualizarUbicacion = Ubicacion::where('id_ubicacion', $consultaUbicacion[0]['id_ubicacion'])->update($dataUbicacion);
-                                    } else {
-                                        $registrarUbicacion = new Ubicacion();
-                                        $registrarUbicacion->fk_insumo   = $items[$i]['fk_insumo'];
-                                        $registrarUbicacion->fk_deposito = $consultaDeposito[0]['id_deposito'];
-                                        $registrarUbicacion->stock = $items[$i]['cantidad_solicitada'];
-                                        $registrarUbicacion->usuario_crea = $data['usuario_modifica'];
-                                        $registrarUbicacion->save();
-                                    }
-                                }
-
-                               
-
                             }
-                        }
-                
-                    }
-
-                    $consultaEstadoDetalle = DetalleAccion::
-                    select('id_detalle','cantidad_confirmada','cantidad_solicitada')
-                    ->where('id_detalle', $items[$i]['id_detalle'])
-                    ->where('estado','Pendiente')
-                    ->get();
-                    if (count($consultaDetalle) > 0) {
-                        $actualizarDetalles = new DetalleAccion();
-                        if ($consultaEstadoDetalle[0]['cantidad_confirmada'] == $consultaEstadoDetalle[0]['cantidad_solicitada']) {
-                            $dataActualizarEstado['estado'] = 'Completado';
-                            $dataActualizarEstado['usuario_modifica'] =  $data['usuario_modifica'];
-                            $dataActualizarEstado['fecha_modifica']   =  $data['fecha_modifica'];
-                            $actualizarDetalles = DetalleAccion::where('id_detalle', $items[$i]['id_detalle'])->update($dataActualizarEstado);
-                        }
-
-                        $dataAccionActualizar = new Acciones();
-                        $dataAccion['usuario_modifica'] = $data['usuario_modifica'];
-                        $dataAccion['fecha_modifica'] =  $data['fecha_modifica'];
-                        $dataAccion['cantidad_solicitada'] = $this->sumarCantidadSolicitada($id_accion);
-                        $dataAccion['cantidad_confirmada'] = $this->sumarCantidadConfirmada($id_accion);
-                        $dataAccion['cantidad_pendiente']  = $this->sumarCantidadPendiente($id_accion);
-                        $dataAccionActualizar = Acciones::where('id_accion', $id_accion)->update($dataAccion);
-
-                        $actualizarEstadoAccion = Acciones::
-                        select('id_accion','cantidad_confirmada','cantidad_solicitada')
-                        ->where('id_accion', $id_accion)
-                        ->where('estado', 'Pendiente')
-                        ->get();
-                        if (count($actualizarEstadoAccion) > 0) {
-                            $actualizar = new Acciones();
-                            if ($actualizarEstadoAccion[0]['cantidad_solicitada'] == $actualizarEstadoAccion[0]['cantidad_confirmada']) {
-                               $dataEstado['estado'] = 'Completado';
-                               $dataEstado['fecha_confirmacion'] = $data['fecha_modifica'];
-                               $dataEstado['usuario_modifica'] = $data['usuario_modifica'];
-                               $dataEstado['fecha_modifica']   =  $data['fecha_modifica'];
-                               $actualizar = Acciones::where('id_accion', $id_accion)->update($dataEstado);
-                            }
-                        }
+                    
+                    } 
                         
                     }
                 }

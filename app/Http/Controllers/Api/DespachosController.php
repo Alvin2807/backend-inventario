@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Jefes;
 use App\Models\VistaDespachoAlternos;
 use App\Models\VistaDespachoInterno;
+use App\Models\VistaInsumos;
+use App\Models\VistaInsumosDespachos;
 use Illuminate\Http\Request;
 
 class DespachosController extends Controller
@@ -24,6 +26,33 @@ class DespachosController extends Controller
         ]);
 
        
+    }
+
+
+    public function mostrarDespachosInternosOtros()
+    {
+        $despachos = VistaDespachoInterno::
+        select('id_despacho','despacho')
+        ->orderBy('id_despacho', 'desc')
+       /*  ->where('id_despacho', '<>', $id_despacho) */
+        ->get();
+        return response()->json([
+            "ok" =>true,
+            "data" =>$despachos
+        ]);
+    }
+
+    public function mostrarInsumosPorDespachos($id_despacho)
+    {
+        $despachos = VistaInsumosDespachos::
+        select('id_insumo', 'codigo', 'categoria', 'marca', 'modelo', 'color', 'nomenclatura', 'referencia', 'stock', 'fk_nomenclatura')
+        ->where('stock', '>', 0)
+        ->where('fk_despacho', $id_despacho)
+        ->get();
+        return response()->json([
+            "ok" =>true,
+            "data" =>$despachos
+        ]);
     }
 
     /**

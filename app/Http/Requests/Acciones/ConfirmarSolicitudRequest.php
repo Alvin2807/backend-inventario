@@ -22,17 +22,14 @@ class ConfirmarSolicitudRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_accion' =>'required|integer',
-           /*  'fk_tipo_accion' =>'required|integer', */
+            'fk_accion'   =>'required|integer',
             'fk_despacho' =>'required|integer',
-            "titulo_nota" =>'required|string',
-            "observacion" =>'required|string',
-            'usuario'   =>'required|string',
-            'detalles'  =>'sometimes|array|min:1',
-            'detalles.*.cantidad_solicitada' =>'required|integer',
-            'detalles.*.id_detalle' =>'required|integer',
-            'detalles.*.fk_insumo'  =>'required|integer'
-
+            'fecha_entrada' =>'date|required',
+            "usuario"     =>'required|string',
+            "detalles"    =>'sometimes|array|min:1',
+            "detalles.*.fk_insumo" =>'required|integer',
+            "detalles.*.id_detalle" =>'required|integer',
+            "detalles.*.cantidad_solicitada" =>'required|integer'
         ];
     }
 }

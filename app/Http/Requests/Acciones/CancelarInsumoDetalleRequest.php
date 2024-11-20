@@ -24,7 +24,7 @@ class CancelarInsumoDetalleRequest extends FormRequest
         return [
             'id_detalle' =>'required|integer',
             'fk_insumo'  =>'required|integer',
-            'id_accion'  =>'required|integer',
+            'fk_accion'  =>'required|integer',
             "usuario"    =>'required|string',
             'cantidad_solicitada' =>'required|integer',
         ];

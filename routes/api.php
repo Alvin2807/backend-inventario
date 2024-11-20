@@ -35,6 +35,8 @@ Route::apiResource('despachos', DespachosController::class);
 Route::apiResource('insumos',InsumosController::class);
 Route::apiResource('depositos', DepositosController::class);
 Route::apiResource('ubicacion',UbicacionesController::class);
+Route::get('mostrar_insumos_despachos/{id_despacho}', [DespachosController::class, 'mostrarInsumosPorDespachos']);
+Route::get('mostrar_despachos_internos_otros', [DespachosController::class,'mostrarDespachosInternosOtros']);
 Route::get('traer_ultimo_registro_accion', [AccionesController::class,'traerUltimoRegistro']);
 Route::get('mostrar_despacho_logueado/{id_despacho}', [DespachosController::class,'mostrarDespachosLogueado']);
 Route::get('mostrar_usuarios_desachos_alternos/{id_despacho}', [DespachosController::class,'mostrarDatosUsarioDespacho']);

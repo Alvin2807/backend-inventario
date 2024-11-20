@@ -23,7 +23,6 @@ class CancelarRequest extends FormRequest
     {
         return [
             "id_accion" =>'required|integer',
-            "usuario"    =>'required|string',
             "detalles" =>'sometimes|array|min:1',
             "detalles.*.id_detalle" =>'required|integer',
             "detalles.*.fk_insumo" =>'required|integer',
